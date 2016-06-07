@@ -13,5 +13,3 @@ libraryDependencies += "org.springframework" % "spring-core" % springVersion
 libraryDependencies += "org.springframework" % "spring-context" % springVersion
 libraryDependencies += "org.springframework" % "spring-test" % springVersion
 libraryDependencies += "org.springframework" % "spring-jdbc" % springVersion
-
-

@@ -1,6 +1,6 @@
 package aug.gui
 
-import java.awt.{Color, EventQueue}
+import java.awt.{BorderLayout, Color, EventQueue}
 import java.awt.event.KeyEvent
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.Properties
@@ -66,13 +66,39 @@ object Profile {
 
 class Profile(val name: String) extends JPanel with AutoCloseable with CommandLineListener {
 
+  import Profile._
+
   val log = Profile.log
 
   val commandLine = new CommandLine
+  val commandCharacter = "#"
+  val textPanel = new TextPanel
   val properties = new Properties
   val propFile = new File(MainWindow.configDir, s"$name.profile")
 
-  Util.touch(propFile)
+  setup
+
+  def setup ={
+    Util.touch(propFile)
+    load
+    save
+
+    setLayout(null)
+    textPanel.setVisible(true)
+    add(textPanel)
+    add(commandLine,BorderLayout.SOUTH)
+    setBackground(Color.BLACK)
+
+    setVisible(false)
+
+    MainWindow.register(this)
+    commandLine.addCommandLineListener(this)
+
+    startScript
+    connect
+    echo(s"profile: $name")
+    log.info(s"opened profile $name")
+  }
 
   def commandHistory = {
     // TODO
@@ -101,6 +127,10 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
     echo(s"set property '${tokens(0)}' to '${tokens(1)}'\n")
   }
 
+  def connect = {
+
+  }
+
   def disconnect = {
     // TODO
   }
@@ -113,13 +143,55 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
     // TODO
   }
 
-  def echo(s: String) = ???
+  def echo(s: String) = textPanel.add(s)
 
-  def resize = ???
+  def resize : Unit = {
+    val parent = getParent
+    if(parent == null) return
+
+    val remainingHeight = parent.getHeight - Profiles.getHeight
+
+    val w = parent.getWidth
+    setBounds(0, Profiles.getHeight, w, remainingHeight)
+
+    val ch = 30
+    commandLine.setBounds(0,getHeight - 30, getWidth,ch)
+
+    val splitHeight = remainingHeight - ch
+    textPanel.setBounds(0,0,getWidth,splitHeight)
+    textPanel.resize
+  }
 
   override def close(): Unit = ???
 
-  override def execute(command: String): Unit = ???
+  def send(command: String): Unit = {
+
+  }
+
+  def handleCommand(command: String) : Unit = {
+    log.debug("received command {}",command)
+    val tokens = command.split(" ",2)
+    val cmd = tokens(0).substring(1)
+
+    if(!(commandMap contains cmd)) {
+      echo(s"ERROR: did not find command '$cmd'")
+      return
+    }
+
+    val argString = if(tokens.length == 2)  tokens(1).trim else ""
+    commandMap.get(cmd).map { _(this,argString)}
+  }
+
+  override def execute(command: String): Unit = {
+    if(command.startsWith(commandCharacter)) {
+      handleCommand(command)
+      return
+    }
+
+    send(command)
+  }
+
+
 
   def load = {
     for(p <- ProfileProperties.properties) properties.setProperty(p.key,p.defaultValue)

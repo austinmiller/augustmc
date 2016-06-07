@@ -1,6 +1,6 @@
 package aug.gui
 
-import java.awt.{Component, Frame}
+import java.awt.{Color, Component, EventQueue, Frame}
 import java.awt.event.{ComponentEvent, ComponentListener, WindowEvent, WindowStateListener}
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.util.Properties
@@ -12,15 +12,21 @@ import aug.util.{TryWith, Util}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 
 object MainWindow extends JFrame with ComponentListener with WindowStateListener {
   val log = Logger(LoggerFactory.getLogger(MainWindow.getClass))
 
   val (configDir, propFile) = {
-    val homeDir = System.getProperty("use.home")
-    val configDir = new File(s"$homeDir/config/aug")
+    val homeDir = System.getProperty("user.home")
+
+    val configDir = if (Util.isWindows) {
+      new File(s"$homeDir/Local Settings/ApplicationData/aug")
+    } else {
+      new File(s"$homeDir/.config/aug")
+    }
+
     if (!configDir.exists) {
       log.info("creating path {}", configDir.getAbsolutePath)
       configDir.mkdirs
@@ -34,29 +40,44 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   }
 
   val properties = new Properties()
+  val globalKeyListener = new GlobalKeyListener
 
-  for (p <- MWProperties.properties) properties.setProperty(p.key, p.defaultValue)
+  def setup() = {
 
-  TryWith(new FileInputStream(propFile)){
-    properties.load(_)
-  } match {
-    case Success(_) =>
-    case Failure(e) => throw new IOException("failed to load properties file",e)
+    for (p <- MWProperties.properties) properties.setProperty(p.key, p.defaultValue)
+
+    TryWith(new FileInputStream(propFile)) {
+      properties.load(_)
+    } match {
+      case Success(_) =>
+      case Failure(e) => throw new IOException("failed to load properties file", e)
+    }
+
+    save
+
+    setIconImage(ImageIO.read(MainWindow.getClass.getResourceAsStream("leaf.png")))
+
+    addComponentListener(this)
+    addWindowStateListener(this)
+
+
+    setSize(getInt(MWWidth), getInt(MWHeight))
+    setLocation(getInt(MWPosX), getInt(MWPosY))
+    if (getBoolean(MWMaximized)) maximize
+
+    add(Profiles)
+    setLayout(null)
+    getContentPane.setBackground(Color.BLACK)
+    setTitle(Util.fullName)
+    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
+    register(Profiles)
+
+    setVisible(true)
+
+    adjustComponents
+
+    log.info("finished setup")
   }
-
-  save
-
-  setIconImage(ImageIO.read(MainWindow.getClass.getResourceAsStream("leaf.png")))
-
-  addComponentListener(this)
-  addWindowStateListener(this)
-
-
-  setSize(getInt(MWWidth),getInt(MWHeight))
-  setLocation(getInt(MWPosX),getInt(MWPosY))
-  if(getBoolean(MWMaximized)) maximize
-
-  adjustComponents
 
   def getInt(prop: MainWindowProperty): Int = properties.getProperty(prop.key).toInt
   def getString(prop: MainWindowProperty): String = properties.getProperty(prop.key)
@@ -72,8 +93,7 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   }
 
   def adjustComponents : Unit = {
-    // TODO
-    //profiles.resize
+    Profiles.resize
   }
 
   def saveShape : Unit = {
@@ -88,9 +108,8 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   }
 
   def register(c: Component) {
-    // TODO
-//    c.addKeyListener(globalKeyListener);
-//    c.addMouseWheelListener(new GlobalMouseWheelListener());
+    c.addKeyListener(globalKeyListener);
+    c.addMouseWheelListener(new GlobalMouseWheelListener());
   }
 
   def set(prop: MainWindowProperty, v: Boolean) : Unit = set(prop,Option(v))
@@ -112,4 +131,23 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   override def componentResized(e: ComponentEvent): Unit = saveShape
 
   override def windowStateChanged(e: WindowEvent): Unit = saveShape
+
+  def main(args: Array[String]): Unit = {
+
+    def autoOpen(f: File) : Unit = Try {
+      val props = new Properties
+      if(!f.isFile || !f.getName.endsWith(".profile")) return
+
+      TryWith(new FileInputStream(f)) { fis =>
+        props.load(fis)
+        val name = f.getName.replaceAll("\\.profile","")
+        if(!props.containsKey(PPAutoOpen.key)) return
+        if(props.get(PPAutoOpen.key).equals("true")) Profiles.open(name)
+      }
+    }
+
+    EventQueue.invokeLater(new Runnable() {def run = MainWindow.setup})
+    Profiles.open("default")
+    for(file <- configDir.listFiles) autoOpen(file)
+  }
 }
