@@ -89,7 +89,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   commandPane.commandLine.addCommandLineListener(this)
 
   startScript
-  echo(s"profile: $name")
+  info(s"profile: $name")
   log.info(s"opened profile $name")
   connect
 
@@ -99,26 +99,26 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   }
 
   def commandList = {
-    echo("\n---- settings -----------------------------------------------------\n")
-    for((k,v) <- properties.asScala) echo(String.format("     %-30s: %30s\n", k, v))
+    info("\n---- settings -----------------------------------------------------\n")
+    for((k,v) <- properties.asScala) info(String.format("     %-30s: %30s\n", k, v))
   }
 
   def commandSet(s: String): Unit = {
     val tokens: Array[String] = s.split(" ",2)
     if(tokens.length != 2) {
-      echo("ERROR: set command requires two arguments\n")
+      info("ERROR: set command requires two arguments\n")
       return
     }
 
     val mp = ProfileProperties.properties.filter{ _.key == tokens(0) }
 
     if(mp.size == 0) {
-      echo(s"ERROR: no such property '${tokens(0)}'\n")
+      info(s"ERROR: no such property '${tokens(0)}'\n")
       return
     }
 
     set(mp.head,tokens(1))
-    echo(s"set property '${tokens(0)}' to '${tokens(1)}'\n")
+    info(s"set property '${tokens(0)}' to '${tokens(1)}'\n")
   }
 
   def connect : Unit = synchronized {
@@ -128,13 +128,13 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
       val port = Try {getInt(PPHostPort)} match {
         case Success(v) => v
         case Failure(e) =>
-          echo(s"failed to resolve port number for ${getString(PPHostPort)}")
+          info(s"failed to resolve port number for ${getString(PPHostPort)}")
           return
       }
 
       telnet = Some(new Telnet(url, port))
       telnet.get.addListener(this)
-      echo(s"connecting to ${telnet.get.address}")
+      info(s"connecting to ${telnet.get.address}")
       Util.invokeLater(() => telnet.get.connect)
     }
   }
@@ -153,12 +153,17 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     // TODO
   }
 
-  def echo(s: String, window: String = defaultWindow) = windows(window).addSystemLine(s)
+  def info(s: String, window: String = defaultWindow) = windows(window).info(s)
+
+
 
   override def close(): Unit = ???
 
   def send(command: String): Unit = {
-    telnet.map { _.send(s"$command\r\n")}
+    telnet.map { t=>
+      t.send(s"$command\r\n")
+      textPanel.echo(s"$command\n", Some(Color.YELLOW))
+    }
   }
 
   def handleCommand(command: String) : Unit = {
@@ -167,7 +172,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     val cmd = tokens(0).substring(1)
 
     if(!(commandMap contains cmd)) {
-      echo(s"ERROR: did not find command '$cmd'")
+      info(s"ERROR: did not find command '$cmd'")
       return
     }
 
@@ -229,12 +234,10 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
 
   override def event(event: ProfileEvent, data: Option[String]): Unit = {
     event match {
-      case TelnetDisconnect => echo("disconnected")
-      case TelnetError => data map {s=>echo(s"ERROR: $s")}
-      case TelnetConnect => echo(s"connected to: ${telnet.get.address}")
-      case TelnetRecv =>
-        println(s"recv ${data.get.length}")
-        data map { s=> windows(defaultWindow).addText(s)}
+      case TelnetDisconnect => info("disconnected")
+      case TelnetError => data map {s=>info(s"ERROR: $s")}
+      case TelnetConnect => info(s"connected to: ${telnet.get.address}")
+      case TelnetRecv => data map { s=> windows(defaultWindow).addText(s)}
       case e => log.info(s"unsupported event $e with data $data")
     }
   }

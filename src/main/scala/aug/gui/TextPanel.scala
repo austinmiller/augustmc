@@ -58,13 +58,41 @@ object TextPanel {
     (metrics.stringWidth("a"),metrics.getHeight)
   }
 
+  val colorMap = Map(
+    "[0" -> new Color(170,170,170),
+
+    "[0;30" -> new Color(85,85,85),
+    "[0;31" -> new Color(170,0,0),
+    "[0;32" -> new Color(0,170,0),
+    "[0;33" -> new Color(170,85,0),
+    "[0;34" -> new Color(0,0,170),
+    "[0;35" -> new Color(170,0,170),
+    "[0;36" -> new Color(0,170,170),
+    "[0;37" -> new Color(170,170,170),
+
+    "[1;30" -> new Color(128,128,128),
+    "[1;31" -> new Color(255,0,0),
+    "[1;32" -> new Color(0,255,0),
+    "[1;33" -> new Color(255,255,0),
+    "[1;34" -> new Color(0,0,255),
+    "[1;35" -> new Color(255,0,255),
+    "[1;36" -> new Color(0,255,255),
+    "[1;37" -> new Color(255,255,254) // 254 because of java 1.8 linux bug
+
+  )
+
 }
 
 trait TextReceiver {
   def addText(txt: String)
   def setCurrentColor(color: Color)
-  def addSystemLine(txt: String, color: Option[Color] = None)
+  def info(txt: String, color: Option[Color] = None)
+  def echo(txt: String, color: Option[Color] = None)
 }
+
+sealed trait ColorState
+case object Stream extends ColorState
+case object ColorCode extends ColorState
 
 class TextPanel extends JPanel with TextReceiver {
 
@@ -98,12 +126,44 @@ class TextPanel extends JPanel with TextReceiver {
     }
   }
 
-  override def addSystemLine(txt: String, color: Option[Color] = None) = synchronized {
+
+
+  override def info(txt: String, color: Option[Color] = None) = synchronized {
     val c = color getOrElse Color.YELLOW
     addLine(new TextLine(ArrayBuffer[ColoredText](ColoredText(txt,c))))
   }
 
   override def addText(txt: String) : Unit = synchronized {
+    var colorCode = StringBuilder.newBuilder
+    var text = StringBuilder.newBuilder
+    var state : ColorState = Stream
+
+    txt.getBytes.foreach {b =>
+      state match {
+        case Stream =>
+          if(b==27.toByte) {
+            addSameColorText(text.result)
+            text.clear
+            state = ColorCode
+          } else {
+            text += b.toChar
+          }
+        case ColorCode =>
+          if(b == 'm'.toByte) {
+            setCurrentColor(colorCode.result)
+            colorCode.clear
+            state = Stream
+          } else {
+            colorCode += b.toChar
+          }
+      }
+    }
+
+    val s = text.result
+    if(s.length > 0) addSameColorText(s)
+
+  }
+  private def addSameColorText(txt: String) : Unit = {
     import scala.collection.JavaConversions._
     val lines = Splitter.on("\n").split(txt).toArray
     if(lines.length > 1) {
@@ -119,6 +179,9 @@ class TextPanel extends JPanel with TextReceiver {
     this.repaint()
   }
 
+  private def setCurrentColor(code: String) :Unit = {
+    colorMap.get(code) map { c => setCurrentColor(c)}
+  }
 
   override def setCurrentColor(color: Color) = synchronized {
     this.color = color
@@ -175,6 +238,13 @@ class TextPanel extends JPanel with TextReceiver {
 
   def resize = {}
 
+  override def echo(txt: String, color: Option[Color] = None): Unit = {
+    val lc = this.color
+    color map { c=> this.color = c }
+    addText(txt)
+    this.color = lc
+
+  }
 }
 
 class SplitTextPanel extends JSplitPane with MouseWheelListener with TextReceiver with Resizer {
@@ -233,7 +303,8 @@ class SplitTextPanel extends JSplitPane with MouseWheelListener with TextReceive
 
   override def addText(txt: String) : Unit = textPanel.addText(txt)
   override def setCurrentColor(color: Color) = textPanel.setCurrentColor(color)
-  override def addSystemLine(txt: String, color: Option[Color]): Unit = textPanel.addSystemLine(txt,color)
+  override def info(txt: String, color: Option[Color] = None): Unit = textPanel.info(txt,color)
+  override def echo(txt: String, color: Option[Color] = None): Unit = textPanel.echo(txt,color)
 }
 
 object SplitTextPanel extends JFrame with ComponentListener {
