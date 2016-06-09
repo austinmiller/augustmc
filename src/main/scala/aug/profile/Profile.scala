@@ -1,12 +1,13 @@
-package aug.gui
+package aug.profile
 
-import java.awt.{BorderLayout, Color, EventQueue}
 import java.awt.event.KeyEvent
+import java.awt.{BorderLayout, Color, EventQueue}
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.Properties
-import javax.swing.{JPanel, JTabbedPane, UIManager}
 import javax.swing.event.{ChangeEvent, ChangeListener}
+import javax.swing.{JPanel, JTabbedPane, UIManager}
 
+import aug.gui.{CommandLine, MainTabbedPane, MainWindow, TextPanel}
 import aug.util.{TryWith, Util}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -143,16 +144,16 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
     // TODO
   }
 
-  def echo(s: String) = textPanel.add(s)
+  def echo(s: String) = textPanel.addSystemLine(s)
 
   def resize : Unit = {
     val parent = getParent
     if(parent == null) return
 
-    val remainingHeight = parent.getHeight - Profiles.getHeight
+    val remainingHeight = parent.getHeight - MainTabbedPane.getHeight
 
     val w = parent.getWidth
-    setBounds(0, Profiles.getHeight, w, remainingHeight)
+    setBounds(0, MainTabbedPane.getHeight, w, remainingHeight)
 
     val ch = 30
     commandLine.setBounds(0,getHeight - 30, getWidth,ch)
@@ -242,36 +243,26 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
 }
 
 
-object Profiles extends JTabbedPane with ChangeListener {
+object Profiles {
   import scala.collection._
   val log = Logger(LoggerFactory.getLogger(Profiles.getClass))
 
   val profiles : mutable.Map[String, Profile] = mutable.Map[String, Profile]()
 
-  UIManager.put("TabbedPane.selected", Color.gray)
-  setBackground(Color.GRAY)
-  setForeground(Color.WHITE)
-  setVisible(false)
-  addChangeListener(this)
+  def apply(name: String) : Profile = synchronized { profiles(name) }
 
-  def get(name: String) : Option[Profile] = synchronized {
-    profiles.get(name)
-  }
-
-  def getActive(): Profile = synchronized { get(getTitleAt(getSelectedIndex)).get }
+  def active = synchronized { Profiles(MainTabbedPane.active) }
 
   def open(name: String) : Profile = {
-    val p : Profile = get(name) getOrElse {
+    val p : Profile = profiles.get(name).getOrElse {
       val p = new Profile(name)
       profiles += name -> p
-      addTab(p.name, null)
-      setMnemonicAt(profiles.size - 1, KeyEvent.VK_0 + profiles.size)
+      MainTabbedPane.addTab(p.name,null)
+      //MainTabbedPane.setMnemonicAt(profiles.size - 1, KeyEvent.VK_0 + profiles.size)
       p
     }
 
-    setVisible(true)
-
-    setSelectedIndex(profiles.size - 1)
+    MainTabbedPane.setSelectedIndex(profiles.size - 1)
     MainWindow.add(p)
 
     p.commandLine.requestFocusInWindow
@@ -279,26 +270,10 @@ object Profiles extends JTabbedPane with ChangeListener {
     p.setVisible(true)
     p.resize
 
-    paintTabs
+    MainTabbedPane.paintTabs
 
     log.info("opened new profile{}",p)
     p
   }
 
-  def resize : Unit = synchronized {
-    val p = getParent
-    if(p==null) return
-    val w = p.getWidth
-    val h = 20
-    setBounds(0,0,w,h)
-    profiles.values.foreach { _.resize }
-  }
-
-  def paintTabs = synchronized {
-    profiles.values.foreach { _.setVisible(false)}
-    getActive.setVisible(true)
-    getActive.commandLine.requestFocusInWindow
-  }
-
-  override def stateChanged(e: ChangeEvent): Unit = paintTabs
 }

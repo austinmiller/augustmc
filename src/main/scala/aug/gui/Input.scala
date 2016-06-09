@@ -2,6 +2,8 @@ package aug.gui
 
 import java.awt.event.{KeyEvent, KeyListener, MouseWheelEvent, MouseWheelListener}
 
+import aug.profile.Profiles
+
 
 class GlobalMouseWheelListener extends MouseWheelListener {
   override def mouseWheelMoved(e: MouseWheelEvent): Unit = {
@@ -29,13 +31,13 @@ class GlobalKeyListener extends KeyListener {
       HotKey('7',alt=true)-> (()=>selectTab(6)),
       HotKey('8',alt=true)-> (()=>selectTab(7)),
       HotKey('9',alt=true)-> (()=>selectTab(8)),
-      HotKey('1',ctrl=true)-> (()=>Profiles.getActive.startScript)
+      HotKey('1',ctrl=true)-> (()=>Profiles.active.startScript)
     )
   }
 
   def selectTab(tab: Int): Unit = {
-    if(Profiles.getTabCount > tab) {
-      Profiles.setSelectedIndex(tab)
+    if(MainTabbedPane.getTabCount > tab) {
+      MainTabbedPane.setSelectedIndex(tab)
     }
   }
 

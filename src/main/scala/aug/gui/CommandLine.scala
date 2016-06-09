@@ -4,6 +4,7 @@ import java.awt.{Color, Font}
 import java.awt.event.{KeyEvent, KeyListener}
 import javax.swing.{BorderFactory, JTextArea}
 
+import aug.profile.CommandLineListener
 import aug.util.RingBuffer
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory

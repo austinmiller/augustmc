@@ -5,14 +5,36 @@ import java.awt.event.{ComponentEvent, ComponentListener, WindowEvent, WindowSta
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.util.Properties
 import javax.imageio.ImageIO
-import javax.swing.JFrame
+import javax.swing.event.{ChangeEvent, ChangeListener}
+import javax.swing.{JFrame, JTabbedPane, UIManager}
 
 import aug.gui.property._
+import aug.profile.Profiles._
+import aug.profile.{PPAutoOpen, Profiles}
 import aug.util.{TryWith, Util}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 import scala.util.{Failure, Success, Try}
+
+trait PercentResizer extends Component with ComponentListener {
+
+  def percentWidth : Int
+  def percentHeight : Int
+
+  override def componentShown(e: ComponentEvent): Unit = {}
+
+  override def componentHidden(e: ComponentEvent): Unit = {}
+
+  override def componentMoved(e: ComponentEvent): Unit = {}
+
+  override def componentResized(e: ComponentEvent): Unit = {
+    if(getParent == null) return
+
+
+
+  }
+}
 
 
 object MainWindow extends JFrame with ComponentListener with WindowStateListener {
@@ -65,12 +87,12 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
     setLocation(getInt(MWPosX), getInt(MWPosY))
     if (getBoolean(MWMaximized)) maximize
 
-    add(Profiles)
+    add(MainTabbedPane)
     setLayout(null)
     getContentPane.setBackground(Color.BLACK)
     setTitle(Util.fullName)
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
-    register(Profiles)
+    register(MainTabbedPane)
 
     setVisible(true)
 
@@ -93,7 +115,7 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   }
 
   def adjustComponents : Unit = {
-    Profiles.resize
+    MainTabbedPane.resize
   }
 
   def saveShape : Unit = {
@@ -150,4 +172,37 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
     Profiles.open("default")
     for(file <- configDir.listFiles) autoOpen(file)
   }
+}
+
+
+object MainTabbedPane extends JTabbedPane with ChangeListener {
+  import scala.collection._
+  val log = Logger(LoggerFactory.getLogger(MainTabbedPane.getClass))
+
+  var tabs = mutable.Map[String,CommandPane]()
+
+  UIManager.put("TabbedPane.selected", Color.gray)
+  setBackground(Color.GRAY)
+  setForeground(Color.WHITE)
+  setVisible(false)
+  addChangeListener(this)
+
+  def active = synchronized { getTitleAt(getSelectedIndex) }
+
+  def resize : Unit = synchronized {
+    val p = getParent
+    if(p==null) return
+    val w = p.getWidth
+    val h = 20
+    setBounds(0,0,w,h)
+    tabs.values.foreach { _.resize }
+  }
+
+  def paintTabs = synchronized {
+    tabs.values.foreach { _.setVisible(false)}
+    tabs(active).setVisible(true)
+    tabs(active).commandLine.requestFocusInWindow
+  }
+
+  override def stateChanged(e: ChangeEvent): Unit = paintTabs
 }
