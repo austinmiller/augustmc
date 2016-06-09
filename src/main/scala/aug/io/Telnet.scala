@@ -15,6 +15,7 @@ import scala.util.{Failure, Try}
 sealed trait ProfileEvent
 
 case object TelnetConnect extends ProfileEvent
+case object TelnetError extends ProfileEvent
 case object TelnetDisconnect extends ProfileEvent
 case object TelnetRecv extends ProfileEvent
 case object TelnetGMCP extends ProfileEvent
@@ -51,15 +52,15 @@ case object TelnetIac extends TelnetCommand(255.toByte,"IAC")
 
 sealed abstract class TelnetOption(val code: Byte, val text: String)
 
-case object OptionNone extends TelnetOption(0.toByte,"")
-case object OptionEcho extends TelnetOption(27.toByte,"ECHO")
-case object OptionType extends TelnetOption(240.toByte,"TYPE")
-case object OptionWinSize extends TelnetOption(250.toByte,"WIN_SIZE")
-case object OptionMccp1 extends TelnetOption(251.toByte,"MCCP1")
-case object OptionMccp2 extends TelnetOption(252.toByte,"MCCP2")
-case object OptionAard102 extends TelnetOption(253.toByte,"AARD102")
-case object OptionAtcp extends TelnetOption(254.toByte,"ATCP")
-case object OptionGmcp extends TelnetOption(255.toByte,"GMCP")
+case object OptionEcho extends TelnetOption(1.toByte,"ECHO")
+case object OptionType extends TelnetOption(24.toByte,"TYPE")
+case object OptionWinSize extends TelnetOption(31.toByte,"WIN_SIZE")
+case object OptionMccp1 extends TelnetOption(85.toByte,"MCCP1")
+case object OptionMccp2 extends TelnetOption(86.toByte,"MCCP2")
+case object OptionAard102 extends TelnetOption(102.toByte,"AARD102")
+case object OptionAtcp extends TelnetOption(200.toByte,"ATCP")
+case object OptionGmcp extends TelnetOption(201.toByte,"GMCP")
+case class OptionUnknown(val unknownCode: Byte) extends TelnetOption(unknownCode,"UNKNOWN")
 
 
 
@@ -99,7 +100,7 @@ object Telnet {
   val TELQUAL_SEND	= 1;
 }
 
-class Telnet(url: String, port: Int) extends AbstractConnection(new InetSocketAddress(url,port)) {
+class Telnet(val url: String, val port: Int) extends AbstractConnection(new InetSocketAddress(url,port)) {
 
   val inflater = new Inflater()
   val listeners = new scala.collection.mutable.ListBuffer[ProfileEventListener]
@@ -109,7 +110,7 @@ class Telnet(url: String, port: Int) extends AbstractConnection(new InetSocketAd
   var compressed = false
   var state : TelnetState = Stream
   var command : TelnetCommand = TelnetNone
-  var option : TelnetOption = OptionNone
+  var option : TelnetOption = new OptionUnknown(0)
   var subMessage = new StringBuilder
   var zipinput : Array[Byte] = null
   var rawBuffer = ByteBuffer.allocate(1<<16)
@@ -126,7 +127,6 @@ class Telnet(url: String, port: Int) extends AbstractConnection(new InetSocketAd
 
   override def connect = {
     super.connect
-    if(!isClosed) dispatch(TelnetConnect,None)
   }
 
   private def constructCommand(command: TelnetCommand, option: TelnetOption) : Array[Byte] = {
@@ -168,7 +168,7 @@ class Telnet(url: String, port: Int) extends AbstractConnection(new InetSocketAd
       }
 
       case Option => {
-        option = Telnet.options(v)
+        option = Telnet.options.get(v).getOrElse { new OptionUnknown(v)}
         handleOption
       }
 
@@ -184,6 +184,7 @@ class Telnet(url: String, port: Int) extends AbstractConnection(new InetSocketAd
     log.debug("recv: IAC {} {}", command.text, option.text)
     option match {
       case OptionType => send(TelnetWill,OptionType)
+      case ou: OptionUnknown => send(TelnetWont,ou)
       case _ =>
     }
 
@@ -282,7 +283,7 @@ class Telnet(url: String, port: Int) extends AbstractConnection(new InetSocketAd
     val msg = new String(postBuffer.array, 0, postBuffer.position)
 
     dispatch(TelnetRecv,Some(msg))
-    postBuffer.position
+    postBuffer.position(0)
   }
 
   private def readRaw : Unit = {
@@ -338,4 +339,7 @@ class Telnet(url: String, port: Int) extends AbstractConnection(new InetSocketAd
     readRaw
   }
 
+  override def error(msg: String): Unit = {
+    dispatch(TelnetError,Some(msg))
+  }
 }

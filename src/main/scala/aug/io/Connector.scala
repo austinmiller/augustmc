@@ -22,11 +22,16 @@ trait Connector {
   def write : Unit
   def address : InetSocketAddress
   def setSocketChannel(channel: SocketChannel) : Unit
+  def error(msg: String) : Unit
+}
+
+object Connector {
+  val log = Logger(LoggerFactory.getLogger(ConnectionManager.getClass))
 }
 
 abstract class AbstractConnection(val address: InetSocketAddress) extends Connector with AutoCloseable {
 
-  val log = ConnectionManager.log
+  val log = Connector.log
   var channel : SocketChannel = null
   val closed = new AtomicBoolean(false)
   val in = ByteBuffer.allocate(2<<20)
@@ -52,7 +57,10 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
     Try {
       ConnectionManager.register(this)
     } match {
-      case Failure(e) => close
+      case Failure(e) =>
+        log.error("error registering socket",e)
+        error(e.getMessage)
+        close
       case _ =>
     }
   }
@@ -64,6 +72,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
     } match {
       case Failure(e) =>
         log.error("failed to finish connection",e)
+        error(e.getMessage)
         close
       case _ =>
     }
@@ -177,7 +186,7 @@ object ConnectionManager extends AutoCloseable with Runnable  {
       selector.keys.asScala.foreach { sk => log.debug("class={}", sk.attachment.getClass.getCanonicalName) }
     }
 
-    log.debug("connector registered: {}", channel);
+    log.debug("connector registered: {}", ch);
   }
 
   def start() : Unit = {

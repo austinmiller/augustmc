@@ -1,41 +1,26 @@
 package aug.gui
 
-import java.awt.{Color, Component, EventQueue, Frame}
+import java.awt.{BorderLayout, Color, Component, EventQueue, Frame}
 import java.awt.event.{ComponentEvent, ComponentListener, WindowEvent, WindowStateListener}
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.util.Properties
 import javax.imageio.ImageIO
 import javax.swing.event.{ChangeEvent, ChangeListener}
-import javax.swing.{JFrame, JTabbedPane, UIManager}
+import javax.swing.{JFrame, JPanel, JTabbedPane, UIManager}
 
 import aug.gui.property._
-import aug.profile.Profiles._
+import aug.io.ConnectionManager
 import aug.profile.{PPAutoOpen, Profiles}
 import aug.util.{TryWith, Util}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+import scala.collection.immutable.IndexedSeq
 import scala.util.{Failure, Success, Try}
 
-trait PercentResizer extends Component with ComponentListener {
-
-  def percentWidth : Int
-  def percentHeight : Int
-
-  override def componentShown(e: ComponentEvent): Unit = {}
-
-  override def componentHidden(e: ComponentEvent): Unit = {}
-
-  override def componentMoved(e: ComponentEvent): Unit = {}
-
-  override def componentResized(e: ComponentEvent): Unit = {
-    if(getParent == null) return
-
-
-
-  }
+trait Resizer extends Component {
+  def resize : Unit
 }
-
 
 object MainWindow extends JFrame with ComponentListener with WindowStateListener {
   val log = Logger(LoggerFactory.getLogger(MainWindow.getClass))
@@ -43,11 +28,7 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   val (configDir, propFile) = {
     val homeDir = System.getProperty("user.home")
 
-    val configDir = if (Util.isWindows) {
-      new File(s"$homeDir/Local Settings/ApplicationData/aug")
-    } else {
-      new File(s"$homeDir/.config/aug")
-    }
+    val configDir = new File(s"$homeDir/.config/aug")
 
     if (!configDir.exists) {
       log.info("creating path {}", configDir.getAbsolutePath)
@@ -63,6 +44,12 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
 
   val properties = new Properties()
   val globalKeyListener = new GlobalKeyListener
+
+  val panel = new JPanel
+  panel.setLayout(new BorderLayout())
+  getContentPane.add(panel)
+  panel.add(MainTabbedPane,BorderLayout.CENTER)
+  getContentPane.setBackground(Color.BLACK)
 
   def setup() = {
 
@@ -87,9 +74,7 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
     setLocation(getInt(MWPosX), getInt(MWPosY))
     if (getBoolean(MWMaximized)) maximize
 
-    add(MainTabbedPane)
-    setLayout(null)
-    getContentPane.setBackground(Color.BLACK)
+
     setTitle(Util.fullName)
     setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
     register(MainTabbedPane)
@@ -115,7 +100,7 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   }
 
   def adjustComponents : Unit = {
-    MainTabbedPane.resize
+//    MainTabbedPane.resize
   }
 
   def saveShape : Unit = {
@@ -168,6 +153,7 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
       }
     }
 
+    ConnectionManager.start
     EventQueue.invokeLater(new Runnable() {def run = MainWindow.setup})
     Profiles.open("default")
     for(file <- configDir.listFiles) autoOpen(file)
@@ -176,33 +162,33 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
 
 
 object MainTabbedPane extends JTabbedPane with ChangeListener {
-  import scala.collection._
   val log = Logger(LoggerFactory.getLogger(MainTabbedPane.getClass))
-
-  var tabs = mutable.Map[String,CommandPane]()
 
   UIManager.put("TabbedPane.selected", Color.gray)
   setBackground(Color.GRAY)
   setForeground(Color.WHITE)
-  setVisible(false)
   addChangeListener(this)
 
   def active = synchronized { getTitleAt(getSelectedIndex) }
 
-  def resize : Unit = synchronized {
-    val p = getParent
-    if(p==null) return
-    val w = p.getWidth
-    val h = 20
-    setBounds(0,0,w,h)
-    tabs.values.foreach { _.resize }
+  def activeCommandPane = synchronized { getComponentAt(getSelectedIndex).asInstanceOf[CommandPane] }
+
+  def setSelected(name: String): Unit = synchronized {
+    var n = -1
+    for(i <- 0 to getTabCount-1) {
+      if(getTitleAt(i) == name) n = i
+    }
+
+    if(n == -1) throw new Exception(s"no such named tab $name")
+
+    setSelectedIndex(n)
   }
 
-  def paintTabs = synchronized {
-    tabs.values.foreach { _.setVisible(false)}
-    tabs(active).setVisible(true)
-    tabs(active).commandLine.requestFocusInWindow
+  def addCommandPane(name: String, cp: CommandPane) : Unit = synchronized {
+    add(name,cp)
   }
 
-  override def stateChanged(e: ChangeEvent): Unit = paintTabs
+  override def stateChanged(e: ChangeEvent): Unit = {
+    if(getTabCount > 0) activeCommandPane.commandLine.requestFocusInWindow
+  }
 }

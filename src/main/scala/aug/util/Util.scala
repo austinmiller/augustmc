@@ -1,7 +1,9 @@
 package aug.util
 
+import java.awt.EventQueue
 import java.io.{Closeable, File, FileOutputStream}
 import java.nio.ByteBuffer
+import java.util.concurrent.Executors
 
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -56,6 +58,12 @@ class RingBuffer[A](val capacity: Int)(implicit m: ClassTag[A]) extends scala.co
 }
 
 object Util {
+
+  val tp = Executors.newFixedThreadPool(1)
+
+  def invokeLater(f: () => Unit) = {
+    tp.submit(new Runnable() { def run = f()})
+  }
 
   val log = Logger(LoggerFactory.getLogger(Util.getClass))
 

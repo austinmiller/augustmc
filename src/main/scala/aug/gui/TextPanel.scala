@@ -23,7 +23,7 @@ class TextLine(texts: ArrayBuffer[ColoredText]) {
   }
 
   val length : Int = texts map {_.text.length} sum
-  val bf = new BufferedImage(fontWidth*length,fontHeight,BufferedImage.TYPE_INT_ARGB)
+  val bf = new BufferedImage(1+fontWidth*length,fontHeight,BufferedImage.TYPE_INT_ARGB)
   var next : TextLine = null
   var prev : TextLine = null
   private val bfg = bf.createGraphics()
@@ -60,7 +60,13 @@ object TextPanel {
 
 }
 
-class TextPanel extends JPanel {
+trait TextReceiver {
+  def addText(txt: String)
+  def setCurrentColor(color: Color)
+  def addSystemLine(txt: String, color: Option[Color] = None)
+}
+
+class TextPanel extends JPanel with TextReceiver {
 
   import TextPanel._
 
@@ -92,12 +98,12 @@ class TextPanel extends JPanel {
     }
   }
 
-  def addSystemLine(txt: String, color: Option[Color] = None) = synchronized {
+  override def addSystemLine(txt: String, color: Option[Color] = None) = synchronized {
     val c = color getOrElse Color.YELLOW
     addLine(new TextLine(ArrayBuffer[ColoredText](ColoredText(txt,c))))
   }
 
-  def addText(txt: String) : Unit = synchronized {
+  override def addText(txt: String) : Unit = synchronized {
     import scala.collection.JavaConversions._
     val lines = Splitter.on("\n").split(txt).toArray
     if(lines.length > 1) {
@@ -114,7 +120,7 @@ class TextPanel extends JPanel {
   }
 
 
-  def setCurrentColor(color: Color) = synchronized {
+  override def setCurrentColor(color: Color) = synchronized {
     this.color = color
   }
 
@@ -128,12 +134,15 @@ class TextPanel extends JPanel {
     for(i <- 0 to lines) {
       if(scrollBot.next != null) scrollBot = scrollBot.next
     }
+
+    repaint()
   }
 
   def scrollDown(lines: Int) : Unit = {
     for(i <- 0 to lines) {
-      if(scrollBot.prev != null) scrollBot = scrollBot.prev
+      if(scrollBot.prev != null && scrollBot != top) scrollBot = scrollBot.prev
     }
+    repaint()
   }
 
   override def paint(g: Graphics): Unit = {
@@ -168,26 +177,15 @@ class TextPanel extends JPanel {
 
 }
 
-class SplitTextPanel extends JSplitPane with MouseWheelListener {
+class SplitTextPanel extends JSplitPane with MouseWheelListener with TextReceiver with Resizer {
   private val topPanel = new TextPanel
   private val textPanel = new TextPanel
-
-  private val topScrollPane = new JScrollPane(topPanel)
-  private val scrollPane = new JScrollPane(textPanel)
-
-  private val topScrollBar = topScrollPane.getVerticalScrollBar
-
-  topScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED)
-  topScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS)
-
-  scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED)
-  scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER)
 
   topPanel.setBackground(new Color(15,15,15))
   setOrientation(JSplitPane.VERTICAL_SPLIT)
   setDividerSize(1)
-  setTopComponent(topScrollPane)
-  setBottomComponent(scrollPane)
+  setTopComponent(topPanel)
+  setBottomComponent(textPanel)
   textPanel.setVisible(true)
 
   addMouseWheelListener(this)
@@ -198,43 +196,44 @@ class SplitTextPanel extends JSplitPane with MouseWheelListener {
   def unsplit(): Unit = {
     setDividerSize(0)
     setDividerLocation(0)
-    topScrollPane.setVisible(false)
+    topPanel.setVisible(false)
   }
 
-  def isSplit = topScrollPane.isVisible
+  def isSplit = topPanel.isVisible
 
   def split : Unit = {
     topPanel.top = textPanel.top
-    topScrollBar.setValue(topScrollBar.getMaximum)
-    topScrollPane.setVisible(true)
+    topPanel.bot = textPanel.bot
+    topPanel.lines = textPanel.lines
+    topPanel.scrollBot = topPanel.top
+    topPanel.setVisible(true)
     setDividerLocation(0.7)
     setDividerSize(4)
   }
 
   def handleDown(notches: Int) : Unit = {
     if(!isSplit) return
-    val rect = topScrollBar.getVisibleRect
-    topScrollBar.setValue(topScrollBar.getValue + SplitTextPanel.NOTCHES)
-    if(rect.getHeight.toInt + topScrollBar.getValue >= topScrollBar.getMaximum) unsplit
+    topPanel.scrollDown(SplitTextPanel.NOTCHES)
+    if(topPanel.top == topPanel.scrollBot) unsplit
   }
 
   def handleUp(notches: Int) : Unit = {
-    if(!isSplit) split else topScrollBar.setValue(topScrollBar.getValue - SplitTextPanel.NOTCHES)
+    if(!isSplit) split else topPanel.scrollUp(SplitTextPanel.NOTCHES)
   }
 
   override def getDividerLocation(): Int = getParent.getWidth / 2
   override def getLastDividerLocation(): Int = getDividerLocation
-  def resize : Unit = setDividerLocation(getDividerLocation)
+  override def resize : Unit = setDividerLocation(getDividerLocation)
 
   override def mouseWheelMoved(e: MouseWheelEvent): Unit = {
     val notches = e.getWheelRotation
-    printf(s"mw moved $notches")
     if(notches < 0) handleUp(notches) else handleDown(notches)
     e.consume()
   }
 
-  def addText(txt: String) : Unit = textPanel.addText(txt)
-  def setCurrentColor(color: Color) = textPanel.setCurrentColor(color)
+  override def addText(txt: String) : Unit = textPanel.addText(txt)
+  override def setCurrentColor(color: Color) = textPanel.setCurrentColor(color)
+  override def addSystemLine(txt: String, color: Option[Color]): Unit = textPanel.addSystemLine(txt,color)
 }
 
 object SplitTextPanel extends JFrame with ComponentListener {

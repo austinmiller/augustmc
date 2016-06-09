@@ -7,13 +7,16 @@ import java.util.Properties
 import javax.swing.event.{ChangeEvent, ChangeListener}
 import javax.swing.{JPanel, JTabbedPane, UIManager}
 
-import aug.gui.{CommandLine, MainTabbedPane, MainWindow, TextPanel}
+import aug.gui.{CommandLine, CommandPane, MainTabbedPane, MainWindow, SplitTextPanel, TextPanel, TextReceiver}
+import aug.io.{ProfileEvent, ProfileEventListener, Telnet, TelnetConnect, TelnetDisconnect, TelnetError, TelnetRecv}
 import aug.util.{TryWith, Util}
+import com.google.common.base.Splitter
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
-import scala.util.Failure
+import scala.collection.mutable
+import scala.util.{Failure, Success, Try}
 
 sealed abstract class ProfileProperty(val key: String, val defaultValue: String)
 
@@ -38,6 +41,7 @@ trait CommandLineListener {
 object Profile {
 
   val log = Logger(LoggerFactory.getLogger(Profile.getClass))
+  val defaultWindow = "default"
 
   val commandMap : Map[String,(Profile,String) => Unit] = {
     val cmap : Map[String,(Profile,String) => Unit]= Map(
@@ -65,41 +69,30 @@ object Profile {
 
 }
 
-class Profile(val name: String) extends JPanel with AutoCloseable with CommandLineListener {
+class Profile(val name: String) extends AutoCloseable with CommandLineListener with ProfileEventListener {
 
   import Profile._
 
   val log = Profile.log
 
-  val commandLine = new CommandLine
   val commandCharacter = "#"
-  val textPanel = new TextPanel
   val properties = new Properties
   val propFile = new File(MainWindow.configDir, s"$name.profile")
+  val textPanel = new SplitTextPanel
+  val commandPane = new CommandPane(textPanel)
+  val windows = mutable.Map[String,TextReceiver](defaultWindow -> textPanel)
+  var telnet : Option[Telnet] = None
 
-  setup
+  Util.touch(propFile)
+  load
+  save
+  commandPane.commandLine.addCommandLineListener(this)
 
-  def setup ={
-    Util.touch(propFile)
-    load
-    save
+  startScript
+  echo(s"profile: $name")
+  log.info(s"opened profile $name")
+  connect
 
-    setLayout(null)
-    textPanel.setVisible(true)
-    add(textPanel)
-    add(commandLine,BorderLayout.SOUTH)
-    setBackground(Color.BLACK)
-
-    setVisible(false)
-
-    MainWindow.register(this)
-    commandLine.addCommandLineListener(this)
-
-    startScript
-    connect
-    echo(s"profile: $name")
-    log.info(s"opened profile $name")
-  }
 
   def commandHistory = {
     // TODO
@@ -128,45 +121,44 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
     echo(s"set property '${tokens(0)}' to '${tokens(1)}'\n")
   }
 
-  def connect = {
+  def connect : Unit = synchronized {
+    val url = getString(PPHostUrl)
+    if(telnet.isEmpty && url.length > 0) {
 
+      val port = Try {getInt(PPHostPort)} match {
+        case Success(v) => v
+        case Failure(e) =>
+          echo(s"failed to resolve port number for ${getString(PPHostPort)}")
+          return
+      }
+
+      telnet = Some(new Telnet(url, port))
+      telnet.get.addListener(this)
+      echo(s"connecting to ${telnet.get.address}")
+      Util.invokeLater(() => telnet.get.connect)
+    }
   }
 
-  def disconnect = {
-    // TODO
+  def disconnect = synchronized {
+    telnet map {_.close}
+    telnet = None
   }
 
-  def reconnect = {
-    // TODO
+  def reconnect = synchronized {
+    disconnect
+    connect
   }
 
   def clear = {
     // TODO
   }
 
-  def echo(s: String) = textPanel.addSystemLine(s)
-
-  def resize : Unit = {
-    val parent = getParent
-    if(parent == null) return
-
-    val remainingHeight = parent.getHeight - MainTabbedPane.getHeight
-
-    val w = parent.getWidth
-    setBounds(0, MainTabbedPane.getHeight, w, remainingHeight)
-
-    val ch = 30
-    commandLine.setBounds(0,getHeight - 30, getWidth,ch)
-
-    val splitHeight = remainingHeight - ch
-    textPanel.setBounds(0,0,getWidth,splitHeight)
-    textPanel.resize
-  }
+  def echo(s: String, window: String = defaultWindow) = windows(window).addSystemLine(s)
 
   override def close(): Unit = ???
 
   def send(command: String): Unit = {
-
+    telnet.map { _.send(s"$command\r\n")}
   }
 
   def handleCommand(command: String) : Unit = {
@@ -192,8 +184,6 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
     send(command)
   }
 
-
-
   def load = {
     for(p <- ProfileProperties.properties) properties.setProperty(p.key,p.defaultValue)
 
@@ -205,15 +195,6 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
     }
   }
 
-  def raise(): Unit = {
-    EventQueue.invokeLater(new Runnable() {
-      override def run(): Unit = {
-        MainWindow.toFront
-        MainWindow.repaint()
-        commandLine.requestFocusInWindow
-      }
-    })
-  }
 
   def save = synchronized {
     TryWith(new FileOutputStream(propFile)) {
@@ -222,6 +203,11 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
       case Failure(e) => log.error("failed to save properties",e)
       case _ =>
     }
+  }
+
+  def raise : Unit = {
+    commandPane.setVisible(true)
+    commandPane.resize
   }
 
   def getInt(prop: ProfileProperty): Int = properties.getProperty(prop.key).toInt
@@ -240,6 +226,18 @@ class Profile(val name: String) extends JPanel with AutoCloseable with CommandLi
   def startScript = {
     // TODO
   }
+
+  override def event(event: ProfileEvent, data: Option[String]): Unit = {
+    event match {
+      case TelnetDisconnect => echo("disconnected")
+      case TelnetError => data map {s=>echo(s"ERROR: $s")}
+      case TelnetConnect => echo(s"connected to: ${telnet.get.address}")
+      case TelnetRecv =>
+        println(s"recv ${data.get.length}")
+        data map { s=> windows(defaultWindow).addText(s)}
+      case e => log.info(s"unsupported event $e with data $data")
+    }
+  }
 }
 
 
@@ -256,23 +254,16 @@ object Profiles {
   def open(name: String) : Profile = {
     val p : Profile = profiles.get(name).getOrElse {
       val p = new Profile(name)
+      log.info("opening new profile {}",p.name)
       profiles += name -> p
-      MainTabbedPane.addTab(p.name,null)
+      MainTabbedPane.addCommandPane(p.name,p.commandPane)
       //MainTabbedPane.setMnemonicAt(profiles.size - 1, KeyEvent.VK_0 + profiles.size)
       p
     }
 
-    MainTabbedPane.setSelectedIndex(profiles.size - 1)
-    MainWindow.add(p)
+    MainTabbedPane.setSelected(p.name)
 
-    p.commandLine.requestFocusInWindow
-
-    p.setVisible(true)
-    p.resize
-
-    MainTabbedPane.paintTabs
-
-    log.info("opened new profile{}",p)
+    log.info("opened profile {}",p.name)
     p
   }
 
