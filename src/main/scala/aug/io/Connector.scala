@@ -189,6 +189,20 @@ object ConnectionManager extends AutoCloseable with Runnable  {
     log.debug("connector registered: {}", ch);
   }
 
+  def register(server: Server) = {
+    val channel = ServerSocketChannel.open
+    channel.configureBlocking(false)
+    channel.socket().setReuseAddress(true)
+    channel.socket.setSoTimeout(0)
+    channel.socket.bind(server.address)
+
+    server.setServerSocketChannel(channel)
+
+    channel.register(selector,SelectionKey.OP_ACCEPT,server)
+
+    log.debug("server registered: {}",server)
+  }
+
   def start() : Unit = {
     log.info("starting")
     thread.start()

@@ -9,6 +9,7 @@ import javax.swing.{JPanel, JTabbedPane, UIManager}
 
 import aug.gui.{CommandLine, CommandPane, MainTabbedPane, MainWindow, SplitTextPanel, TextPanel, TextReceiver}
 import aug.io.{ProfileEvent, ProfileEventListener, Telnet, TelnetConnect, TelnetDisconnect, TelnetError, TelnetRecv}
+import aug.script.ScriptManager
 import aug.util.{TryWith, Util}
 import com.google.common.base.Splitter
 import com.typesafe.scalalogging.Logger
@@ -82,6 +83,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   val commandPane = new CommandPane(textPanel)
   val windows = mutable.Map[String,TextReceiver](defaultWindow -> textPanel)
   var telnet : Option[Telnet] = None
+  val scriptManager = new ScriptManager
 
   Util.touch(propFile)
   load
@@ -229,7 +231,14 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   }
 
   def startScript = {
-    // TODO
+    Try {
+      val classpath: String = getString(PPScriptClasspath)
+      val script: String = getString(PPScriptClass)
+      scriptManager.start(classpath, script, this)
+    } match {
+      case Failure(e) => log.error("failed to start script",e)
+      case _ =>
+    }
   }
 
   override def event(event: ProfileEvent, data: Option[String]): Unit = {
