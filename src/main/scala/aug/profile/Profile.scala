@@ -9,7 +9,7 @@ import javax.swing.{JPanel, JTabbedPane, UIManager}
 
 import aug.gui.{CommandLine, CommandPane, MainTabbedPane, MainWindow, SplitTextPanel, TextPanel, TextReceiver}
 import aug.io.Telnet
-import aug.script.ScriptManager
+import aug.script.{ScriptLoader, ScriptManager, ScriptRunner}
 import aug.util.{TryWith, Util}
 import com.google.common.base.Splitter
 import com.typesafe.scalalogging.Logger
@@ -63,7 +63,6 @@ trait CommandLineListener {
 object Profile {
 
   val log = Logger(LoggerFactory.getLogger(Profile.getClass))
-  val defaultWindow = "default"
 
   val commandMap : Map[String,(Profile,String) => Unit] = {
     val cmap : Map[String,(Profile,String) => Unit]= Map(
@@ -92,7 +91,11 @@ object Profile {
 }
 
 trait ProfileInterface {
-  def info(s: String, window: String = "default") : Unit
+  val defaultWindow = "default"
+  def info(s: String, window: String = defaultWindow) : Unit
+  def echo(s: String, color: Option[Color] = None, window: String = defaultWindow) : Unit
+  def addColoredText(s: String, window: String = defaultWindow) : Unit
+  def consumeNextCommand() : Unit
 }
 
 
@@ -109,7 +112,8 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   val commandPane = new CommandPane(textPanel)
   val windows = mutable.Map[String,TextReceiver](defaultWindow -> textPanel)
   var telnet : Option[Telnet] = None
-  val scriptManager = new ScriptManager(null,null,this)
+  var scriptRunner : Option[ProfileEventListener] = None
+  var consumeCommand = false
 
   Util.touch(propFile)
   load
@@ -123,7 +127,10 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
 
 
   def commandHistory = {
-    // TODO
+    val h = commandPane.commandLine.history
+    h.indices.foreach { i =>
+      info(String.format("[%3d]: %s\n",i,h(i)))
+    }
   }
 
   def commandList = {
@@ -182,6 +189,10 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   }
 
   override def info(s: String, window: String = defaultWindow) = windows(window).info(s)
+  override def echo(s: String, color: Option[Color] = None, window: String = defaultWindow) = {
+    windows(window).echo(s, color)
+  }
+  override def addColoredText(s: String, window: String = defaultWindow) = windows(window).addText(s)
 
   override def close(): Unit = ???
 
@@ -206,13 +217,17 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     commandMap.get(cmd).map { _(this,argString)}
   }
 
+  override def consumeNextCommand() : Unit = consumeCommand = true
+
   override def execute(command: String): Unit = {
     if(command.startsWith(commandCharacter)) {
       handleCommand(command)
       return
     }
 
-    send(command)
+    consumeCommand = false
+    scriptRunner map { _.event(UserCommand,Some(command))}
+    if(!consumeCommand) send(command)
   }
 
   def load = {
@@ -254,11 +269,11 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     save
   }
 
-  def startScript = {
+  def startScript = synchronized {
     Try {
       val classpath: String = getString(PPScriptClasspath)
       val script: String = getString(PPScriptClass)
-//      scriptManager.start(classpath, script, this)
+      scriptRunner = Some(ScriptLoader.newScript(script,classpath,this))
     } match {
       case Failure(e) => log.error("failed to start script",e)
       case _ =>
@@ -266,6 +281,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   }
 
   override def event(event: ProfileEvent, data: Option[String]): Unit = {
+    scriptRunner map { _.event(event,data) }
     event match {
       case TelnetDisconnect => info("disconnected")
       case TelnetError => data map {s=>info(s"ERROR: $s")}
