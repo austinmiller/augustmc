@@ -8,7 +8,7 @@ import javax.swing.event.{ChangeEvent, ChangeListener}
 import javax.swing.{JPanel, JTabbedPane, UIManager}
 
 import aug.gui.{CommandLine, CommandPane, MainTabbedPane, MainWindow, SplitTextPanel, TextPanel, TextReceiver}
-import aug.io.{ProfileEvent, ProfileEventListener, Telnet, TelnetConnect, TelnetDisconnect, TelnetError, TelnetRecv}
+import aug.io.Telnet
 import aug.script.ScriptManager
 import aug.util.{TryWith, Util}
 import com.google.common.base.Splitter
@@ -29,6 +29,27 @@ case object PPScriptClasspath extends ProfileProperty("script.classpath","")
 case object PPScriptClass extends ProfileProperty("script.class","")
 case object PPAutoOpen extends ProfileProperty("profile.auto.open","false")
 case object PPPromptPattern extends ProfileProperty("prompt.pattern",".*\\d*\\d*.*\\d.*")
+
+sealed trait ProfileEvent
+
+case object TelnetConnect extends ProfileEvent
+case object TelnetError extends ProfileEvent
+case object TelnetDisconnect extends ProfileEvent
+case object TelnetRecv extends ProfileEvent
+case object TelnetGMCP extends ProfileEvent
+
+case object ScriptClose extends ProfileEvent
+case object ScriptInit extends ProfileEvent
+case object ScriptNewLine extends ProfileEvent
+case object ScriptFragment extends ProfileEvent
+case object ScriptNewColorLine extends ProfileEvent
+case object ScriptColorFragment extends ProfileEvent
+
+case object UserCommand extends ProfileEvent
+
+trait ProfileEventListener {
+  def event(event: ProfileEvent, data: Option[String])
+}
 
 object ProfileProperties {
   val properties = Set(PPConsoleDivider,PPHostUrl,PPHostPort,PPScriptJail,PPScriptClasspath,PPScriptClass,
@@ -70,7 +91,12 @@ object Profile {
 
 }
 
-class Profile(val name: String) extends AutoCloseable with CommandLineListener with ProfileEventListener {
+trait ProfileInterface {
+  def info(s: String, window: String = "default") : Unit
+}
+
+
+class Profile(val name: String) extends AutoCloseable with CommandLineListener with ProfileEventListener with ProfileInterface {
 
   import Profile._
 
@@ -83,7 +109,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   val commandPane = new CommandPane(textPanel)
   val windows = mutable.Map[String,TextReceiver](defaultWindow -> textPanel)
   var telnet : Option[Telnet] = None
-  val scriptManager = new ScriptManager
+  val scriptManager = new ScriptManager(null,null,this)
 
   Util.touch(propFile)
   load
@@ -155,9 +181,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     // TODO
   }
 
-  def info(s: String, window: String = defaultWindow) = windows(window).info(s)
-
-
+  override def info(s: String, window: String = defaultWindow) = windows(window).info(s)
 
   override def close(): Unit = ???
 
@@ -234,7 +258,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     Try {
       val classpath: String = getString(PPScriptClasspath)
       val script: String = getString(PPScriptClass)
-      scriptManager.start(classpath, script, this)
+//      scriptManager.start(classpath, script, this)
     } match {
       case Failure(e) => log.error("failed to start script",e)
       case _ =>

@@ -5,30 +5,12 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.zip.Inflater
 
+import aug.profile._
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 import scala.util.{Failure, Try}
-
-
-sealed trait ProfileEvent
-
-case object TelnetConnect extends ProfileEvent
-case object TelnetError extends ProfileEvent
-case object TelnetDisconnect extends ProfileEvent
-case object TelnetRecv extends ProfileEvent
-case object TelnetGMCP extends ProfileEvent
-
-case object ScriptClose extends ProfileEvent
-case object ScriptInit extends ProfileEvent
-case object ScriptNewLine extends ProfileEvent
-case object ScriptFragment extends ProfileEvent
-case object ScriptNewColorLine extends ProfileEvent
-case object ScriptColorFragment extends ProfileEvent
-
-case object UserCommand extends ProfileEvent
-
 
 sealed trait TelnetState
 
@@ -62,11 +44,6 @@ case object OptionAtcp extends TelnetOption(200.toByte,"ATCP")
 case object OptionGmcp extends TelnetOption(201.toByte,"GMCP")
 case class OptionUnknown(val unknownCode: Byte) extends TelnetOption(unknownCode,"UNKNOWN")
 
-
-
-trait ProfileEventListener {
-  def event(event: ProfileEvent, data: Option[String])
-}
 
 object Telnet {
   val log = Logger(LoggerFactory.getLogger(Telnet.getClass))
