@@ -49,7 +49,7 @@ class TextLine(texts: ArrayBuffer[ColoredText]) {
 object TextPanel {
   val log = Logger(LoggerFactory.getLogger(TextPanel.getClass))
 
-  val font = new Font( "Monospaced", Font.PLAIN, 16 )
+  val font = new Font( "Monospaced", Font.PLAIN, 20 )
 
   val (fontWidth,fontHeight) = {
     val bf = new BufferedImage(200,80,BufferedImage.TYPE_INT_RGB)

@@ -5,6 +5,9 @@ import java.io.{Closeable, File, FileOutputStream}
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 
+import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
+import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -12,6 +15,26 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
 
+
+object JsonUtil {
+  val mapper = new ObjectMapper() with ScalaObjectMapper
+  mapper.registerModule(DefaultScalaModule)
+  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+
+  def toJson(value: Map[Symbol, Any]): String = {
+    toJson(value map { case (k,v) => k.name -> v})
+  }
+
+  def toJson(value: Any): String = {
+    mapper.writeValueAsString(value)
+  }
+
+  def toMap[V](json:String)(implicit m: Manifest[V]) = fromJson[Map[String,V]](json)
+
+  def fromJson[T](json: String)(implicit m : Manifest[T]): T = {
+    mapper.readValue[T](json)
+  }
+}
 
 object TryWith {
   def apply[C <: Closeable, R](resource: => C)(f: C => R): Try[R] =
@@ -100,6 +123,9 @@ object Util {
       case _ =>
     }
   }
+
+  def removeColors(string: String): String = string.replaceAll("\u001B\\[.*?m", "")
+
 }
 
 

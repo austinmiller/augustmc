@@ -1,17 +1,13 @@
 package aug.profile
 
-import java.awt.event.KeyEvent
-import java.awt.{BorderLayout, Color, EventQueue}
+import java.awt.Color
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.Properties
-import javax.swing.event.{ChangeEvent, ChangeListener}
-import javax.swing.{JPanel, JTabbedPane, UIManager}
 
-import aug.gui.{CommandLine, CommandPane, MainTabbedPane, MainWindow, SplitTextPanel, TextPanel, TextReceiver}
+import aug.gui._
 import aug.io.Telnet
-import aug.script.{ScriptLoader, ScriptManager, ScriptRunner}
+import aug.script.ScriptLoader
 import aug.util.{TryWith, Util}
-import com.google.common.base.Splitter
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -129,7 +125,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   def commandHistory = {
     val h = commandPane.commandLine.history
     h.indices.foreach { i =>
-      info(String.format("[%3d]: %s\n",i,h(i)))
+      info(f"[$i%3d]: ${h(i)}\n")
     }
   }
 
@@ -273,21 +269,22 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     Try {
       val classpath: String = getString(PPScriptClasspath)
       val script: String = getString(PPScriptClass)
-      scriptRunner = Some(ScriptLoader.newScript(script,classpath,this))
+      scriptRunner = Some(ScriptLoader.newScript(script,scriptDir,this))
     } match {
       case Failure(e) => log.error("failed to start script",e)
       case _ =>
     }
   }
 
+  private def scriptDir : File = {
+    new File(getString(PPScriptClasspath))
+  }
+
   override def event(event: ProfileEvent, data: Option[String]): Unit = {
     scriptRunner map { _.event(event,data) }
     event match {
-      case TelnetDisconnect => info("disconnected")
       case TelnetError => data map {s=>info(s"ERROR: $s")}
-      case TelnetConnect => info(s"connected to: ${telnet.get.address}")
-      case TelnetRecv => data map { s=> windows(defaultWindow).addText(s)}
-      case e => log.info(s"unsupported event $e with data $data")
+      case _ =>
     }
   }
 }

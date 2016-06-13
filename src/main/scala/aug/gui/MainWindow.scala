@@ -161,13 +161,14 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
 }
 
 
-object MainTabbedPane extends JTabbedPane with ChangeListener {
+object MainTabbedPane extends JTabbedPane with ChangeListener with ComponentListener{
   val log = Logger(LoggerFactory.getLogger(MainTabbedPane.getClass))
 
   UIManager.put("TabbedPane.selected", Color.gray)
   setBackground(Color.GRAY)
   setForeground(Color.WHITE)
   addChangeListener(this)
+  addComponentListener(this)
 
   def active = synchronized { getTitleAt(getSelectedIndex) }
 
@@ -188,7 +189,20 @@ object MainTabbedPane extends JTabbedPane with ChangeListener {
     add(name,cp)
   }
 
-  override def stateChanged(e: ChangeEvent): Unit = {
-    if(getTabCount > 0) activeCommandPane.commandLine.requestFocusInWindow
+  private def updateActive = {
+    if(getTabCount > 0){
+      activeCommandPane.resize
+      activeCommandPane.commandLine.requestFocusInWindow
+    }
   }
+
+  override def stateChanged(e: ChangeEvent): Unit = updateActive
+
+  override def componentShown(e: ComponentEvent): Unit = updateActive
+
+  override def componentHidden(e: ComponentEvent): Unit = {}
+
+  override def componentMoved(e: ComponentEvent): Unit = {}
+
+  override def componentResized(e: ComponentEvent): Unit = updateActive
 }

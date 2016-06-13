@@ -23,6 +23,7 @@ class CommandPane(private var centerComponent: Resizer) extends JPanel with Resi
   add(commandLine,BorderLayout.SOUTH)
   setBackground(Color.BLACK)
   setVisible(false)
+  addComponentListener(this)
 
   MainWindow.register(this)
 
@@ -46,7 +47,7 @@ class CommandPane(private var centerComponent: Resizer) extends JPanel with Resi
     })
   }
 
-  def resize : Unit = {
+  def resize : Unit = synchronized {
     log.trace("resizing")
 
     val p = getParent
@@ -68,17 +69,18 @@ class CommandPane(private var centerComponent: Resizer) extends JPanel with Resi
   }
 
   override def paint(g: Graphics) = {
-    resize
     super.paint(g)
   }
 
-  override def componentShown(e: ComponentEvent): Unit = {}
+  override def componentShown(e: ComponentEvent): Unit = {
+    resize
+  }
 
   override def componentHidden(e: ComponentEvent): Unit = {}
 
   override def componentMoved(e: ComponentEvent): Unit = {}
 
   override def componentResized(e: ComponentEvent): Unit = {
-    resize
   }
 }
+

@@ -22,7 +22,7 @@ case object SubNegotiation extends TelnetState
 
 sealed abstract class TelnetCommand(val code: Byte, val text: String)
 
-case object TelnetNone extends TelnetCommand(0.toByte,"")
+case class TelnetUnknown(val unknownCode: Byte) extends TelnetCommand(unknownCode,"UNKNOWN")
 case object TelnetEsc extends TelnetCommand(27.toByte,"ESC")
 case object TelnetSE extends TelnetCommand(240.toByte,"SE")
 case object TelnetSB extends TelnetCommand(250.toByte,"SB")
@@ -86,7 +86,7 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
 
   var compressed = false
   var state : TelnetState = Stream
-  var command : TelnetCommand = TelnetNone
+  var command : TelnetCommand = TelnetUnknown(0)
   var option : TelnetOption = new OptionUnknown(0)
   var subMessage = new StringBuilder
   var zipinput : Array[Byte] = null
@@ -126,34 +126,29 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
 
     state match {
 
-      case Stream => {
+      case Stream =>
         if(TelnetIac.code == v) {
           state = Command
         } else if('\r' != c) postBuffer.put(c)
-      }
 
-      case Command => {
+      case Command =>
         command = Telnet.telnetCommands(v)
 
         if(TelnetSE.code == v) {
           state = Stream
           handleSubNegotiation
-
         } else {
           state = Option
         }
-      }
 
-      case Option => {
+      case Option =>
         option = Telnet.options.get(v).getOrElse { new OptionUnknown(v)}
         handleOption
-      }
 
-      case SubNegotiation => {
+      case SubNegotiation =>
         if(TelnetIac.code == v) {
           state = Command
-        } else subMessage.append(c)
-      }
+        } else subMessage.append(c.toChar)
     }
   }
 
@@ -195,23 +190,15 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
 
   private def handleOption : Unit = {
     command match {
-      case TelnetSB => {
-        state = SubNegotiation
-        return
-      }
-      case TelnetWill => {
+      case TelnetSB => state = SubNegotiation
+      case TelnetWill =>
         state = Stream
         handleWillOption
-        return
-      }
-      case TelnetDo => {
+      case TelnetDo =>
         state = Stream
         handleDoOption
-        return
-      }
-      case _ =>
+      case _ => state = Stream
     }
-    state = Stream
   }
 
   private def handleSubNegotiation() = {
@@ -220,15 +207,15 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
     log.trace("subMessage {}", sm)
 
     option match {
-      case OptionType => {
+      case OptionType =>
         log.debug("recv: IAC {} {}",command.text, option.text)
         val i = sm.charAt(0)
         if(Telnet.TELQUAL_SEND == i) {
           send(OptionType, Telnet.TELQUAL_IS+"augustMC")
         }
-      }
       case OptionMccp2 => startCompression()
-      case OptionGmcp => dispatch(TelnetGMCP,Some(sm))
+      case OptionGmcp =>
+        dispatch(TelnetGMCP,Some(sm))
       case _ =>
     }
   }
@@ -239,7 +226,10 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
       case OptionEcho => send(TelnetDo,OptionEcho)
       case OptionMccp2 => send(TelnetDo,OptionMccp2)
       case OptionAtcp => send(TelnetDo,OptionAtcp)
-      case OptionGmcp => send(TelnetDo, OptionGmcp)
+      case OptionGmcp =>
+        send(TelnetDo, OptionGmcp)
+        // TODO don't easy code this
+        send(OptionGmcp, "core.supports.set [\"core 1\",\"comm 1\",\"group 1\",\"room 1\",\"char 1\"]")
       case _ =>
     }
 
