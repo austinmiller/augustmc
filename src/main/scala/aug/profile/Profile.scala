@@ -88,6 +88,7 @@ object Profile {
 
 trait ProfileInterface {
   val defaultWindow = "default"
+  def send(s: String) : Unit
   def info(s: String, window: String = defaultWindow) : Unit
   def echo(s: String, color: Option[Color] = None, window: String = defaultWindow) : Unit
   def addColoredText(s: String, window: String = defaultWindow) : Unit
@@ -192,7 +193,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
 
   override def close(): Unit = ???
 
-  def send(command: String): Unit = {
+  override def send(command: String): Unit = {
     telnet.map { t=>
       t.send(s"$command\r\n")
       textPanel.echo(s"$command\n", Some(Color.YELLOW))

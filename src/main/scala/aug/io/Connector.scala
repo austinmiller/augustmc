@@ -108,7 +108,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
       handleIncoming(copy)
     } match {
       case Failure(e: IOException) => {
-        log.info("connection reset by peer")
+        log.info("connection reset by peer",e)
         close
       }
       case Failure(e) => {

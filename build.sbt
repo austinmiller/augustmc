@@ -21,3 +21,5 @@ libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "1.1.1"
 
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
 libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
+
+libraryDependencies += "commons-io" % "commons-io" % "2.5"

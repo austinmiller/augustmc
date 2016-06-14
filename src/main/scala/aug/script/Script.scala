@@ -1,7 +1,7 @@
 package aug.script
 
 import java.awt.Color
-import java.io.File
+import java.io.{File, PrintWriter, StringWriter}
 import java.net.{URL, URLClassLoader}
 import java.nio.ByteBuffer
 
@@ -144,7 +144,7 @@ class ScriptRunner (val profile: ProfileInterface, val script: ProfileEventListe
       case _ =>
     }
 
-    script.event(event,data)
+    dispatch(event,data)
   }
 
   private def handleLine(): Unit = {
@@ -204,8 +204,13 @@ class BasicScript extends ProfileEventListener {
 object Game extends ProfileInterface {
 
   private[script] var profile : Option[ProfileInterface] = None
+  val log = Logger(LoggerFactory.getLogger(Game.getClass))
 
   def handleException(t: Throwable) : Unit = {
+    val sw = new StringWriter()
+    t.printStackTrace(new PrintWriter(sw))
+    log.error("Game exception",t)
+    echo(sw.toString + "\n")
 
   }
 
@@ -217,4 +222,5 @@ object Game extends ProfileInterface {
   override def addColoredText(s: String, window: String = defaultWindow): Unit = profile map { _.addColoredText(s,window) }
   override def echo(s: String, color: Option[Color], window: String = defaultWindow): Unit = profile map { _.echo(s,color,window) }
   override def consumeNextCommand(): Unit = profile map { _.consumeNextCommand() }
+  override def send(s: String): Unit = profile map (_.send(s))
 }
