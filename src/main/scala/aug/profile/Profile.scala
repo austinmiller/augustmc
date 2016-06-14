@@ -5,7 +5,7 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import java.util.Properties
 
 import aug.gui._
-import aug.io.Telnet
+import aug.io.{OptionGmcp, Telnet}
 import aug.script.ScriptLoader
 import aug.util.{TryWith, Util}
 import com.typesafe.scalalogging.Logger
@@ -93,6 +93,7 @@ trait ProfileInterface {
   def echo(s: String, color: Option[Color] = None, window: String = defaultWindow) : Unit
   def addColoredText(s: String, window: String = defaultWindow) : Unit
   def consumeNextCommand() : Unit
+  def sendGmcp(s: String) : Unit
 }
 
 
@@ -199,6 +200,8 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
       textPanel.echo(s"$command\n", Some(Color.YELLOW))
     }
   }
+
+  override def sendGmcp(s: String) : Unit = telnet.map(_.send(OptionGmcp,s))
 
   def handleCommand(command: String) : Unit = {
     log.debug("received command {}",command)

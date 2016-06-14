@@ -175,6 +175,7 @@ class ScriptRunner (val profile: ProfileInterface, val script: ProfileEventListe
     Trigger.processFragmentTriggers(noColors)
 
     profile.addColoredText(fragment)
+    buffer.clear
 
     dispatch(ScriptFragment,Some(noColors))
     dispatch(ScriptColorFragment,Some(fragment))
@@ -229,4 +230,6 @@ object Game extends ProfileInterface {
   override def echo(s: String, color: Option[Color], window: String = defaultWindow): Unit = profile map { _.echo(s,color,window) }
   override def consumeNextCommand(): Unit = profile map { _.consumeNextCommand() }
   override def send(s: String): Unit = profile map (_.send(s))
+
+  override def sendGmcp(s: String): Unit = profile map (_.sendGmcp(s))
 }
