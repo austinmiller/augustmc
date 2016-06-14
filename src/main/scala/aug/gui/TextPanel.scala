@@ -15,7 +15,7 @@ import scala.util.Random
 
 case class ColoredText(text: String, color: Color = Color.WHITE, background: Option[Color] = None)
 
-class TextLine(texts: ArrayBuffer[ColoredText]) {
+class TextLine(texts: ArrayBuffer[ColoredText], drawBorder: Boolean = false) {
   import TextPanel._
 
   def this(s: String) {
@@ -33,10 +33,23 @@ class TextLine(texts: ArrayBuffer[ColoredText]) {
     var pos = 0
     texts foreach { ct =>
       bfg.setColor(ct.color)
-      bfg.drawString(ct.text, pos*fontWidth, fontHeight)
+      bfg.drawString(ct.text, pos*fontWidth, fontHeight-fontDescent)
+
       pos += ct.text.length
     }
+
+    if(drawBorder) {
+      val w = bf.getWidth
+      val h = bf.getHeight
+      bfg.setColor(Color.WHITE)
+      bfg.drawLine(0,0,w,0)
+      bfg.drawLine(0,h-1,w,h-1)
+      bfg.drawLine(0,0,0,h)
+      bfg.drawLine(w-1,0,w-1,h)
+    }
+
   }
+
 
 
   def height(): Int = {
@@ -51,11 +64,12 @@ object TextPanel {
 
   val font = new Font( "Monospaced", Font.PLAIN, 20 )
 
-  val (fontWidth,fontHeight) = {
+  val (fontWidth,fontHeight,fontDescent) = {
     val bf = new BufferedImage(200,80,BufferedImage.TYPE_INT_RGB)
     val bfg = bf.createGraphics
     val metrics = bfg.getFontMetrics(font)
-    (metrics.stringWidth("a"),metrics.getHeight)
+
+    (metrics.stringWidth("a"),metrics.getHeight,metrics.getDescent)
   }
 
   val colorMap = Map(

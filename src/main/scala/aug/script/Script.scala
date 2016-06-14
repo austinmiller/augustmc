@@ -10,6 +10,7 @@ import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+import scala.collection.immutable.IndexedSeq
 import scala.util.{Failure, Success, Try}
 
 object ScriptLoader {
@@ -216,6 +217,11 @@ object Game extends ProfileInterface {
 
   def close : Unit = {
 
+  }
+
+  def header(s: String) = {
+    val sl: IndexedSeq[Char] = for(i<-1 to s.length) yield '='
+    Game.echo(s"\n$s\n${sl.mkString("")}\n")
   }
 
   override def info(s: String, window: String = defaultWindow): Unit = profile map { _.info(s,window) }
