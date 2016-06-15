@@ -40,17 +40,3 @@ object Alias {
   def alias(pattern: String, callback: Matcher => Unit) = aliases.add(new Alias("^"+pattern+"$",callback))
   def simpleAlias(pattern: String, callback: Matcher => Unit) = aliases.add(new Alias("^"+Pattern.quote(pattern)+"$",callback))
 }
-
-
-
-object Trigger {
-  def processFragmentTriggers(noColors: String): Unit = {}
-
-  def processTriggers(line: String) = {
-
-  }
-}
-
-class Trigger {
-
-}
