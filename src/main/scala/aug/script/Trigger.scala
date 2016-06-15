@@ -7,8 +7,8 @@ import scala.util.{Failure, Success, Try}
 
 object Trigger {
 
-  val triggers = mutable.Set[Trigger]()
-  val fragmentTriggers = mutable.Set[Trigger]()
+  private val triggers = mutable.Set[Trigger]()
+  private val fragmentTriggers = mutable.Set[Trigger]()
 
   def processFragmentTriggers(frag: String): Unit = {
     if(frag.length <2) return
@@ -37,6 +37,11 @@ object Trigger {
     )
   }
 
+  def disablePromptTriggers = {
+    triggers.filter(_.triggerOptions.disableAtPrompt).foreach(_.enabled = false)
+    fragmentTriggers.filter(_.triggerOptions.disableAtPrompt).foreach(_.enabled = false)
+  }
+
   def oneTimeTrigger(pattern: String, callback: Matcher => Unit): Trigger = {
     register(new OneTimeTrigger("^" + pattern + "$",callback))
   }
@@ -60,7 +65,8 @@ object Trigger {
 
 }
 
-case class TriggerOptions(fireOnce: Boolean=false, fragmentTrigger: Boolean =false, oneTime: Boolean = false)
+case class TriggerOptions(fireOnce: Boolean=false, fragmentTrigger: Boolean =false, oneTime: Boolean = false,
+                          disableAtPrompt: Boolean = false)
 
 class Trigger(patternString: String, val callback: Matcher => Unit,var enabled: Boolean = true, val triggerOptions: TriggerOptions = TriggerOptions()) {
   val pattern = Pattern.compile(patternString)
