@@ -94,6 +94,7 @@ trait ProfileInterface {
   def addColoredText(s: String, window: String = defaultWindow) : Unit
   def consumeNextCommand() : Unit
   def sendGmcp(s: String) : Unit
+  def connected : Boolean
 }
 
 
@@ -291,6 +292,8 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
       case _ =>
     }
   }
+
+  override def connected: Boolean = {telnet.isDefined && !telnet.map(_.isClosed).getOrElse(false)}
 }
 
 

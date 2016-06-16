@@ -232,4 +232,6 @@ object Game extends ProfileInterface {
   override def send(s: String): Unit = profile map (_.send(s))
 
   override def sendGmcp(s: String): Unit = profile map (_.sendGmcp(s))
+
+  override def connected: Boolean = profile map {_.connected} getOrElse false
 }
