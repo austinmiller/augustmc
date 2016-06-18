@@ -221,14 +221,17 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
   override def consumeNextCommand() : Unit = consumeCommand = true
 
   override def execute(command: String): Unit = {
+
     if(command.startsWith(commandCharacter)) {
       handleCommand(command)
       return
     }
 
-    consumeCommand = false
-    scriptRunner map { _.event(UserCommand,Some(command))}
-    if(!consumeCommand) send(command)
+    command.split(";").foreach{cmd=>
+      consumeCommand = false
+      scriptRunner map { _.event(UserCommand,Some(cmd))}
+      if(!consumeCommand) send(cmd)
+    }
   }
 
   def load = {
