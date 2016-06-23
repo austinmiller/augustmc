@@ -16,6 +16,7 @@ class CommandPane(private var centerComponent: Resizer) extends JPanel with Resi
   import CommandPane._
 
   val commandLine = new CommandLine
+  commandLine.setFont(TextPanel.font)
 
   setLayout(null)
   centerComponent.setVisible(true)
@@ -61,7 +62,8 @@ class CommandPane(private var centerComponent: Resizer) extends JPanel with Resi
     setBounds(0, th, w, rh)
     setBackground(Color.RED)
 
-    val ch = 45
+
+    val ch = (TextPanel.fontHeight*5)/2
     commandLine.setBounds(0,h-ch,getWidth,ch)
     val sh = h-ch
     centerComponent.setBounds(0,0,getWidth,sh)

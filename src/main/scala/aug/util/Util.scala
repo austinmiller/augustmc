@@ -4,6 +4,7 @@ import java.awt.EventQueue
 import java.io.{Closeable, File, FileOutputStream}
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
+import java.util.regex.Pattern
 
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
@@ -98,6 +99,9 @@ object Util {
   val major = 2016
   val minor = 1
 
+  val colorEscapeCode = "\u001B"
+  val resetCode =s"${colorEscapeCode}[0m"
+
   def fullName : String = s"$name $version"
   def version : String = s"$major.$minor"
 
@@ -132,6 +136,13 @@ object Util {
 
 }
 
+case class TelnetColor(color: Int, bright: Boolean) {
+  def quote = Pattern.quote(toString)
+  override def toString = {
+    val bc = if(bright) 1 else 0
+    s"${Util.colorEscapeCode}[$bc;${color}m"
+  }
+}
 
 import scala.util.Random
 

@@ -152,7 +152,7 @@ class ScriptRunner (val profile: ProfileInterface, val script: ProfileEventListe
     val newLine = new String(buffer.array(),0,buffer.position())
     val noColors = Util.removeColors(newLine)
 
-    Trigger.processTriggers(noColors)
+    Trigger.processTriggers(newLine)
 
     if(pos != 0)
       profile.addColoredText(newLine.substring(pos))
@@ -172,7 +172,7 @@ class ScriptRunner (val profile: ProfileInterface, val script: ProfileEventListe
     val fragment = new String(buffer.array(),0,buffer.position())
     val noColors = Util.removeColors(fragment)
 
-    Trigger.processFragmentTriggers(noColors)
+    Trigger.processFragmentTriggers(fragment)
 
     profile.addColoredText(fragment)
     buffer.clear
@@ -230,8 +230,6 @@ object Game extends ProfileInterface {
   override def echo(s: String, color: Option[Color], window: String = defaultWindow): Unit = profile map { _.echo(s,color,window) }
   override def consumeNextCommand(): Unit = profile map { _.consumeNextCommand() }
   override def send(s: String): Unit = profile map (_.send(s))
-
   override def sendGmcp(s: String): Unit = profile map (_.sendGmcp(s))
-
   override def connected: Boolean = profile map {_.connected} getOrElse false
 }
