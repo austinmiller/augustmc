@@ -23,3 +23,5 @@ libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % jacks
 libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
 
 libraryDependencies += "commons-io" % "commons-io" % "2.5"
+
+libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"

@@ -115,8 +115,8 @@ object MainWindow extends JFrame with ComponentListener with WindowStateListener
   }
 
   def register(c: Component) {
-    c.addKeyListener(globalKeyListener);
-    c.addMouseWheelListener(new GlobalMouseWheelListener());
+    c.addKeyListener(globalKeyListener)
+    c.addMouseWheelListener(new GlobalMouseWheelListener())
   }
 
   def set(prop: MainWindowProperty, v: Boolean) : Unit = set(prop,Option(v))
