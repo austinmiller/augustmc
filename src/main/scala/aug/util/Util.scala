@@ -1,7 +1,7 @@
 package aug.util
 
 import java.awt.EventQueue
-import java.io.{Closeable, File, FileOutputStream}
+import java.io.{Closeable, File, FileOutputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
 import java.util.regex.Pattern
@@ -30,11 +30,19 @@ object JsonUtil {
     mapper.writeValueAsString(value)
   }
 
+  def toJson(out: OutputStream, value: Any) = {
+    mapper.writeValue(out,value)
+  }
+
   def prettyJson(value: Any): String = {
     mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value)
   }
 
   def toMap[V](json:String)(implicit m: Manifest[V]) = fromJson[Map[String,V]](json)
+
+  def fromJson[T](in: InputStream)(implicit m : Manifest[T]): T = {
+    mapper.readValue[T](in)
+  }
 
   def fromJson[T](json: String)(implicit m : Manifest[T]): T = {
     mapper.readValue[T](json)

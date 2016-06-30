@@ -277,6 +277,7 @@ class Profile(val name: String) extends AutoCloseable with CommandLineListener w
     Try {
       val classpath: String = getString(PPScriptClasspath)
       val script: String = getString(PPScriptClass)
+      scriptRunner foreach (_.event(ScriptClose,None))
       scriptRunner = Some(ScriptLoader.newScript(script,scriptDir,this))
     } match {
       case Failure(e) => log.error("failed to start script",e)
