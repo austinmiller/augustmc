@@ -106,7 +106,7 @@ trait TextReceiver {
 
 sealed trait ColorState
 case object Stream extends ColorState
-case object ColorCode extends ColorState
+case object ColorCodeState extends ColorState
 
 class TextPanel extends JPanel with TextReceiver {
 
@@ -158,11 +158,11 @@ class TextPanel extends JPanel with TextReceiver {
           if(b==27.toByte) {
             addSameColorText(text.result)
             text.clear
-            state = ColorCode
+            state = ColorCodeState
           } else {
             text += b.toChar
           }
-        case ColorCode =>
+        case ColorCodeState =>
           if(b == 'm'.toByte) {
             setCurrentColor(colorCode.result)
             colorCode.clear
