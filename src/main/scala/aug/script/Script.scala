@@ -45,7 +45,7 @@ object ScriptLoader {
       } match {
         case Success(c) => c
         case Failure(e) =>
-          profile.info(s"ERROR: cannot load script $className")
+//          profile.info(s"ERROR: cannot load script $className")
           loadBasicScript
       }
     }

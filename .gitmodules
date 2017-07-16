@@ -1,0 +1,3 @@
+[submodule "Darcula"]
+	path = darcula
+	url = git@github.com:austinmiller/Darcula.git

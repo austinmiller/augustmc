@@ -2,6 +2,8 @@ package aug.io
 
 import java.awt.Color
 
+import aug.profile.ColorSchemeConfig
+
 
 sealed trait TelnetColor
 
@@ -30,12 +32,12 @@ trait ColorScheme {
 }
 
 object DefaultColorScheme extends ColorScheme {
-  override def boldColor(telnetColor: TelnetColor): Color = {
+  override def color(telnetColor: TelnetColor): Color = {
     telnetColor match {
       case TelnetColorDefaultBg => new Color(0, 0, 0)
       case TelnetColorDefaultFg => new Color(170, 170, 170)
       case TelnetColorBlack => new Color(0, 0, 0)
-      case TelnetColorRed => new Color(0, 0, 0)
+      case TelnetColorRed => new Color(255, 0, 0)
       case TelnetColorGreen => new Color(0, 170, 0)
       case TelnetColorYellow => new Color(170, 85, 0)
       case TelnetColorBlue => new Color(0, 0, 170)
@@ -45,7 +47,7 @@ object DefaultColorScheme extends ColorScheme {
     }
   }
 
-  override def color(telnetColor: TelnetColor): Color = {
+  override def boldColor(telnetColor: TelnetColor): Color = {
     telnetColor match {
       case TelnetColorDefaultBg => new Color(0, 0, 0)
       case TelnetColorDefaultFg => new Color(170, 170, 170)
@@ -59,4 +61,66 @@ object DefaultColorScheme extends ColorScheme {
       case TelnetColorWhite => new Color(255, 255, 255)
     }
   }
+}
+
+class ConfigurableColorScheme(colorSchemeConfig: ColorSchemeConfig) extends ColorScheme {
+
+  val defaultFg = Color.decode(colorSchemeConfig.defaultFg)
+  val defaultBg = Color.decode(colorSchemeConfig.defaultBg)
+  val black = Color.decode(colorSchemeConfig.black)
+  val red = Color.decode(colorSchemeConfig.red)
+  val green = Color.decode(colorSchemeConfig.green)
+  val yellow = Color.decode(colorSchemeConfig.yellow)
+  val blue = Color.decode(colorSchemeConfig.blue)
+  val magenta = Color.decode(colorSchemeConfig.magenta)
+  val cyan = Color.decode(colorSchemeConfig.cyan)
+  val white = Color.decode(colorSchemeConfig.white)
+
+  val boldBlack = Color.decode(colorSchemeConfig.boldBlack)
+  val boldRed = Color.decode(colorSchemeConfig.boldRed)
+  val boldGreen = Color.decode(colorSchemeConfig.boldGreen)
+  val boldYellow = Color.decode(colorSchemeConfig.boldYellow)
+  val boldBlue = Color.decode(colorSchemeConfig.boldBlue)
+  val boldMagenta = Color.decode(colorSchemeConfig.boldMagenta)
+  val boldCyan = Color.decode(colorSchemeConfig.boldCyan)
+  val boldWhite = Color.decode(colorSchemeConfig.boldWhite)
+
+  override def boldColor(telnetColor: TelnetColor): Color = {
+    telnetColor match {
+      case TelnetColorDefaultFg => defaultFg
+      case TelnetColorDefaultBg => defaultBg
+      case TelnetColorBlack => boldBlack
+      case TelnetColorRed => boldRed
+      case TelnetColorGreen => boldGreen
+      case TelnetColorYellow => boldYellow
+      case TelnetColorBlue => boldBlue
+      case TelnetColorMagenta => boldMagenta
+      case TelnetColorCyan => boldCyan
+      case TelnetColorWhite => boldWhite
+    }
+  }
+
+  override def color(telnetColor: TelnetColor): Color = {
+    telnetColor match {
+      case TelnetColorDefaultFg => defaultFg
+      case TelnetColorDefaultBg => defaultBg
+      case TelnetColorBlack => black
+      case TelnetColorRed => red
+      case TelnetColorGreen => green
+      case TelnetColorYellow => yellow
+      case TelnetColorBlue => blue
+      case TelnetColorMagenta => magenta
+      case TelnetColorCyan => cyan
+      case TelnetColorWhite => white
+    }
+  }
+}
+
+object SidePanelColor extends Color(62, 67, 76)
+object BorderColor extends Color(85, 90, 92)
+object TransparentColor extends Color(0, 0, 0, 0)
+
+object ColorUtils {
+  def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
+  def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
 }

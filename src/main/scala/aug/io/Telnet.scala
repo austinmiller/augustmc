@@ -307,6 +307,6 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
   }
 
   override def error(msg: String): Unit = {
-    dispatch(TelnetError,Some(msg))
+    dispatch(TelnetError, Some(msg))
   }
 }

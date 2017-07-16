@@ -3,6 +3,7 @@ package aug.gui
 import java.awt.event.{MouseWheelEvent, MouseWheelListener}
 import java.awt.image.BufferedImage
 import java.awt.{Font, Graphics}
+import javax.swing.border.EmptyBorder
 import javax.swing.{JFrame, JPanel, JSplitPane}
 
 import aug.io._
@@ -224,6 +225,7 @@ class TextArea(val text: Text) extends JPanel {
   private var botLine = -1
 
   setBackground(colorScheme.color(TelnetColorDefaultBg))
+  setFocusable(false)
 
   def setColorScheme(colorScheme: ColorScheme): Unit = {
     this.colorScheme = colorScheme
@@ -243,7 +245,6 @@ class TextArea(val text: Text) extends JPanel {
 
   override def setFont(font: Font) : Unit = {
     super.setFont(font)
-
 
     val bf = new BufferedImage(200,80,BufferedImage.TYPE_INT_RGB)
     val bfg = bf.createGraphics
@@ -332,12 +333,15 @@ class SplittableTextArea(text: Text) extends JSplitPane with MouseWheelListener 
   setDividerSize(1)
   setTopComponent(topTextArea)
   setBottomComponent(textArea)
+  setFocusable(false)
 
   addMouseWheelListener(this)
 
   unsplit
 
   textArea.setVisible(true)
+
+  setBorder(new EmptyBorder(0, 0, 0, 0))
 
   override def setFont(font: Font): Unit = {
     super.setFont(font)

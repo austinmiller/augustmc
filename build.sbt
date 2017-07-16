@@ -4,6 +4,11 @@ version := "1.0"
 
 scalaVersion := "2.11.8"
 
+unmanagedSourceDirectories in Compile += baseDirectory.value / "darcula/src"
+
+unmanagedJars in Compile += file("darcula/lib/iconloader.jar")
+unmanagedJars in Compile += file("darcula/lib/annotations.jar")
+
 val springVersion = "4.2.6.RELEASE"
 val jacksonVersion = "2.7.4"
 
@@ -25,3 +30,6 @@ libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" 
 libraryDependencies += "commons-io" % "commons-io" % "2.5"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+
+// for apple toolkit and ui
+libraryDependencies += "mrj" % "MRJToolkitStubs" % "1.0"

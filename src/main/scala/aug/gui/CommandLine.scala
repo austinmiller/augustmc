@@ -1,15 +1,13 @@
 package aug.gui
 
-import java.awt.{Color, Font}
+import java.awt.Font
 import java.awt.event.{KeyEvent, KeyListener}
 import javax.swing.{BorderFactory, JTextArea}
 
-import aug.profile.CommandLineListener
+import aug.io.SidePanelColor
 import aug.util.RingBuffer
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
-
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 object CommandLine {
   val log = Logger(LoggerFactory.getLogger(CommandLine.getClass))
@@ -20,22 +18,20 @@ class CommandLine extends JTextArea with KeyListener {
 
   val log = CommandLine.log
 
-  private val listeners = ListBuffer[CommandLineListener]()
+//  private val listeners = ListBuffer[CommandLineListener]()
   val history = new RingBuffer[String](20)
   var historyIndex = -1
 
-  setFont(new Font("Courier New", Font.PLAIN, 12))
+  setFont(new Font("Courier New", Font.PLAIN, 20))
 
-  setBackground(Color.WHITE)
-  setForeground(Color.BLACK)
-  val border = BorderFactory.createLineBorder(Color.BLACK)
-  setBorder(BorderFactory.createCompoundBorder(border,BorderFactory.createEmptyBorder(5,5,2,2)))
+  setLineWrap(true)
+  setWrapStyleWord(true)
 
-  MainWindow.register(this)
-  requestFocusInWindow()
+  setBorder(BorderFactory.createLineBorder(SidePanelColor, 3))
+
   addKeyListener(this)
 
-  def addCommandLineListener(listener: CommandLineListener) = listeners += listener
+//  def addCommandLineListener(listener: CommandLineListener) = listeners += listener
 
   def process(e: KeyEvent) {
     if(!e.isConsumed || e.getComponent.equals(this)) return
@@ -46,11 +42,10 @@ class CommandLine extends JTextArea with KeyListener {
   def execute(msg: String) = {
     log.trace("executing: {}",msg)
 
-
     if(history(0) != msg) history.push(msg)
     historyIndex = -1
 
-    listeners.foreach{_.execute(msg)}
+//    listeners.foreach{_.execute(msg)}
   }
 
   override def keyTyped(e: KeyEvent): Unit = {}

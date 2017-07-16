@@ -1,208 +1,109 @@
 package aug.gui
 
-import java.awt.{BorderLayout, Color, Component, EventQueue, Frame}
-import java.awt.event.{ComponentEvent, ComponentListener, WindowEvent, WindowStateListener}
-import java.io.{File, FileInputStream, FileOutputStream, IOException}
-import java.util.Properties
+import java.awt.event.{WindowEvent, WindowListener}
+import java.awt.{Frame, Insets}
 import javax.imageio.ImageIO
-import javax.swing.event.{ChangeEvent, ChangeListener}
-import javax.swing.{JFrame, JPanel, JTabbedPane, UIManager}
+import javax.swing._
+import javax.swing.event.{MenuEvent, MenuListener}
 
-import aug.gui.property._
-import aug.io.ConnectionManager
-import aug.profile.{PPAutoOpen, Profiles}
-import aug.util.{TryWith, Util}
+import aug.gui.settings.SettingsWindow
+import aug.io.TransparentColor
+import aug.profile.ConfigManager
+import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.immutable.IndexedSeq
-import scala.util.{Failure, Success, Try}
+class MainWindow extends JFrame {
+  import MainWindow.log
 
-trait Resizer extends Component {
-  def resize : Unit
+  val tabbedPane = new TabbedPane
+  val menus = new JMenuBar
+
+  val settingsWindow = new SettingsWindow(this)
+
+  add(tabbedPane)
+
+  setTitle("August MC")
+  setSize(1000,900)
+
+  private val fileMenu: JMenu = new JMenu("File")
+  private val preferences: JMenu = new JMenu("Preferences")
+
+  menus.add(fileMenu)
+
+  if (OsTools.isMac) {
+    OsTools.macHandlePreferences(() => displaySettings)
+    OsTools.macHandleQuit(() => Main.exit)
+  } else {
+    fileMenu.add(preferences)
+
+    preferences.addMenuListener(new MenuListener {
+      override def menuSelected(e: MenuEvent): Unit = {}
+
+      override def menuDeselected(e: MenuEvent): Unit = displaySettings
+
+      override def menuCanceled(e: MenuEvent): Unit = {}
+    })
+  }
+
+  setJMenuBar(menus)
+
+  val icon = ImageIO.read(MainWindow.getClass.getResourceAsStream("leaf.png"))
+  setIconImage(icon)
+  OsTools.setDockIcon(icon)
+
+  addWindowListener(new WindowListener {
+    override def windowDeiconified(e: WindowEvent): Unit = {}
+    override def windowClosing(e: WindowEvent): Unit = Main.exit
+    override def windowClosed(e: WindowEvent): Unit = {}
+    override def windowActivated(e: WindowEvent): Unit = {}
+    override def windowOpened(e: WindowEvent): Unit = {}
+    override def windowDeactivated(e: WindowEvent): Unit = {}
+    override def windowIconified(e: WindowEvent): Unit = {}
+  })
+
+  def displaySettings = {
+    settingsWindow.setVisible(true)
+    settingsWindow.toFront()
+  }
+
 }
 
-object MainWindow extends JFrame with ComponentListener with WindowStateListener {
+object MainWindow {
   val log = Logger(LoggerFactory.getLogger(MainWindow.getClass))
+}
 
-  val (configDir, propFile) = {
-    val homeDir = System.getProperty("user.home")
+object Main extends App {
+  ConfigManager.load
 
-    val configDir = new File(s"$homeDir/.config/aug")
+  OsTools.init("August MC")
 
-    if (!configDir.exists) {
-      log.info("creating path {}", configDir.getAbsolutePath)
-      configDir.mkdirs
-    }
+  UIManager.setLookAndFeel(new DarculaLaf)
 
-    val propFile = new File(configDir, "aug.properties")
+  UIManager.put("Tree.textBackground", TransparentColor)
+  UIManager.put("TabbedPane.contentBorderInsets", new Insets(6,0,0,0))
+  UIManager.put("TabbedPane.tabInsets", new Insets(3,10,3,10))
+  UIManager.put("TextArea.margin", 10)
+  UIManager.put("Button.darcula.disabledText.shadow", TransparentColor)
 
-    Util.touch(propFile)
+  val mainWindow = new MainWindow
+  mainWindow.setVisible(true)
 
-    (configDir, propFile)
+  def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
+
+  val text = mainWindow.tabbedPane.active.text
+
+  text.addText("hello world\n" + colorCode("33;44") + "next liney" +
+    colorCode("46;34") + " more of this line" +
+    "\n" + colorCode("36;42") + "third line" + colorCode("0"))
+
+  mainWindow.tabbedPane.active.textArea.repaint()
+
+  def exit : Unit = {
+    Frame.getFrames.foreach(_.dispose())
+    System.exit(0)
   }
 
-  val properties = new Properties()
-  val globalKeyListener = new GlobalKeyListener
-
-  val panel = new JPanel
-  panel.setLayout(new BorderLayout())
-  getContentPane.add(panel)
-  panel.add(MainTabbedPane,BorderLayout.CENTER)
-  getContentPane.setBackground(Color.BLACK)
-
-  def setup() = {
-
-    for (p <- MWProperties.properties) properties.setProperty(p.key, p.defaultValue)
-
-    TryWith(new FileInputStream(propFile)) {
-      properties.load(_)
-    } match {
-      case Success(_) =>
-      case Failure(e) => throw new IOException("failed to load properties file", e)
-    }
-
-    save
-
-    setIconImage(ImageIO.read(MainWindow.getClass.getResourceAsStream("leaf.png")))
-
-    addComponentListener(this)
-    addWindowStateListener(this)
-
-
-    setSize(getInt(MWWidth), getInt(MWHeight))
-    setLocation(getInt(MWPosX), getInt(MWPosY))
-    if (getBoolean(MWMaximized)) maximize
-
-
-    setTitle(Util.fullName)
-    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
-    register(MainTabbedPane)
-
-    setVisible(true)
-
-    adjustComponents
-
-    log.info("finished setup")
-  }
-
-  def getInt(prop: MainWindowProperty): Int = properties.getProperty(prop.key).toInt
-  def getString(prop: MainWindowProperty): String = properties.getProperty(prop.key)
-  def getBoolean(prop: MainWindowProperty): Boolean = properties.getProperty(prop.key).toBoolean
-
-  def save : Unit = synchronized {
-    TryWith(new FileOutputStream(propFile)) {
-      properties.store(_, "main window properties")
-    } match {
-      case Failure(e) => log.error("failed to save properties",e)
-      case _ =>
-    }
-  }
-
-  def adjustComponents : Unit = {
-//    MainTabbedPane.resize
-  }
-
-  def saveShape : Unit = {
-    set(MWHeight,getHeight)
-    set(MWWidth,getWidth)
-    val loc = getLocation
-    set(MWPosX,loc.x)
-    set(MWPosY,loc.y)
-    set(MWMaximized,isMaximized)
-    save
-    adjustComponents
-  }
-
-  def register(c: Component) {
-    c.addKeyListener(globalKeyListener)
-    c.addMouseWheelListener(new GlobalMouseWheelListener())
-  }
-
-  def set(prop: MainWindowProperty, v: Boolean) : Unit = set(prop,Option(v))
-  def set(prop: MainWindowProperty, v: String) : Unit = set(prop,Option(v))
-  def set(prop: MainWindowProperty, v: Int) : Unit = set(prop,Option(v))
-  def set(prop: MainWindowProperty, v: Option[Any]): Unit = {
-    properties.setProperty(prop.key, v map { _.toString } getOrElse prop.defaultValue)
-  }
-
-  def maximize(): Unit = setExtendedState(getExtendedState() | Frame.MAXIMIZED_BOTH);
-  def isMaximized(): Boolean = (getExtendedState & Frame.MAXIMIZED_BOTH) > 0
-
-  override def componentShown(e: ComponentEvent): Unit = {}
-
-  override def componentHidden(e: ComponentEvent): Unit = {}
-
-  override def componentMoved(e: ComponentEvent): Unit = saveShape
-
-  override def componentResized(e: ComponentEvent): Unit = saveShape
-
-  override def windowStateChanged(e: WindowEvent): Unit = saveShape
-
-  def main(args: Array[String]): Unit = {
-
-    def autoOpen(f: File) : Unit = Try {
-      val props = new Properties
-      if(!f.isFile || !f.getName.endsWith(".profile")) return
-
-      TryWith(new FileInputStream(f)) { fis =>
-        props.load(fis)
-        val name = f.getName.replaceAll("\\.profile","")
-        if(!props.containsKey(PPAutoOpen.key)) return
-        if(props.get(PPAutoOpen.key).equals("true")) Profiles.open(name)
-      }
-    }
-
-    ConnectionManager.start
-    EventQueue.invokeLater(new Runnable() {def run = MainWindow.setup})
-    Profiles.open("default")
-    for(file <- configDir.listFiles) autoOpen(file)
-  }
 }
 
 
-object MainTabbedPane extends JTabbedPane with ChangeListener with ComponentListener{
-  val log = Logger(LoggerFactory.getLogger(MainTabbedPane.getClass))
-
-  UIManager.put("TabbedPane.selected", Color.gray)
-  setBackground(Color.GRAY)
-  setForeground(Color.WHITE)
-  addChangeListener(this)
-  addComponentListener(this)
-
-  def active = synchronized { getTitleAt(getSelectedIndex) }
-
-  def activeCommandPane = synchronized { getComponentAt(getSelectedIndex).asInstanceOf[CommandPane] }
-
-  def setSelected(name: String): Unit = synchronized {
-    var n = -1
-    for(i <- 0 to getTabCount-1) {
-      if(getTitleAt(i) == name) n = i
-    }
-
-    if(n == -1) throw new Exception(s"no such named tab $name")
-
-    setSelectedIndex(n)
-  }
-
-  def addCommandPane(name: String, cp: CommandPane) : Unit = synchronized {
-    add(name,cp)
-  }
-
-  private def updateActive = {
-    if(getTabCount > 0){
-      activeCommandPane.resize
-      activeCommandPane.commandLine.requestFocusInWindow
-    }
-  }
-
-  override def stateChanged(e: ChangeEvent): Unit = updateActive
-
-  override def componentShown(e: ComponentEvent): Unit = updateActive
-
-  override def componentHidden(e: ComponentEvent): Unit = {}
-
-  override def componentMoved(e: ComponentEvent): Unit = {}
-
-  override def componentResized(e: ComponentEvent): Unit = updateActive
-}
