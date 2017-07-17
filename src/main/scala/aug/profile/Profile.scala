@@ -2,6 +2,10 @@ package aug.profile
 
 import java.awt.Color
 
+import aug.gui.{MainWindow, TabPanel}
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
+
 trait ProfileEventListener {
   def event(event: ProfileEvent, data: Option[String])
 }
@@ -34,6 +38,26 @@ case object ScriptColorFragment extends ProfileEvent
 
 case object UserCommand extends ProfileEvent
 
-class Profile {
+class Profile(profileConfig: ProfileConfig, mainWindow: MainWindow) {
+  import Profile.log
 
+  val tabPanel = new TabPanel(mainWindow, this)
+  val name = profileConfig.name
+  mainWindow.tabbedPane.addProfile(name, tabPanel)
+
+  def connect = {
+    log.info("connect!")
+  }
+
+  def reconnect = {
+    log.info("reconnect!")
+  }
+
+  def disconnect = {
+    log.info("disconnect!")
+  }
+}
+
+object Profile {
+  val log = Logger(LoggerFactory.getLogger(Profile.getClass))
 }

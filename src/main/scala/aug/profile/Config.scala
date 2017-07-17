@@ -4,6 +4,7 @@ import java.io.{File, FileInputStream, FileOutputStream}
 import javax.xml.bind.{JAXBContext, Marshaller}
 import javax.xml.bind.annotation.{XmlAccessType, XmlAccessorType, XmlRootElement}
 
+import aug.gui.MainWindow
 import aug.util.TryWith
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -77,6 +78,7 @@ case class ProfileConfig(
 object ConfigManager {
   val log = Logger(LoggerFactory.getLogger(ConfigManager.getClass))
 
+  private val activeProfiles = mutable.Map[String, Profile]()
   private val profiles = mutable.Map[String, ProfileConfig]()
   private val profilesConfigContext = JAXBContext.newInstance(classOf[ProfileConfig])
   private val profilesConfigMarshaller = profilesConfigContext.createMarshaller()
@@ -123,6 +125,17 @@ object ConfigManager {
     }
   }
 
+  def activateProfile(name: String, mainWindow: MainWindow) = synchronized {
+    activeProfiles(name) = new Profile(profiles(name), mainWindow)
+  }
+
+  def getUnactivedProfiles = synchronized {
+    val keys = activeProfiles.keySet
+    profiles.keys.filter(!keys.contains(_)).toList
+  }
+
+  def getActiveProfiles = synchronized(activeProfiles.keys)
+
   def getProfiles = synchronized(profiles.values.toList)
 
   def getProfile(name: String) : Option[ProfileConfig] = synchronized {
@@ -132,6 +145,10 @@ object ConfigManager {
   def setProfile(profileConfig: ProfileConfig) = synchronized {
     profiles(profileConfig.name) = profileConfig
     saveProfile(profileConfig.name)
+  }
+
+  def deactivateProfile(name: String) = synchronized {
+
   }
 
   private def saveProfile(name: String) = synchronized {

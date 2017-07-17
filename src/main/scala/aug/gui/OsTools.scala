@@ -1,13 +1,14 @@
 package aug.gui
 
-import java.awt.Image
-import java.io.IOException
+import java.awt.{Image, Toolkit}
 
 import com.apple.mrj.{MRJApplicationUtils, MRJPrefsHandler, MRJQuitHandler}
 
 object OsTools {
 
   val isMac = System.getProperty("os.name") == "Mac OS X"
+
+  val shortcutKey = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()
 
   def setDockIcon(icon: Image) : Unit = {
     if (isMac == false) return

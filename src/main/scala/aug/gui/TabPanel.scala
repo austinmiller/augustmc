@@ -4,9 +4,10 @@ import java.awt._
 import javax.swing.border.EmptyBorder
 import javax.swing.{JPanel, JTabbedPane, SpringLayout, UIManager}
 
+import aug.profile.Profile
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
-class TabPanel extends JPanel {
+class TabPanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel {
   val springLayout = new SpringLayout
   val text = new Text
   val textArea = new SplittableTextArea(text)
@@ -33,8 +34,8 @@ class TabPanel extends JPanel {
   springLayout.putConstraint(SpringLayout.SOUTH, textArea, 0, SpringLayout.NORTH, commandLine)
 }
 
-class TabbedPane extends JTabbedPane {
-  addTab("system", new TabPanel)
+class TabbedPane(mainWindow: MainWindow) extends JTabbedPane {
+  addTab("system", new TabPanel(mainWindow, null))
 
   setUI(new DarculaTabbedPaneUI() {
     override def paintFocusIndicator(g: Graphics, tabPlacement: Int, rects: Array[Rectangle], tabIndex: Int,
@@ -42,5 +43,10 @@ class TabbedPane extends JTabbedPane {
   })
 
   def active = getComponentAt(getSelectedIndex).asInstanceOf[TabPanel]
+
+  def addProfile(name: String, tabPanel: TabPanel) = {
+    addTab(name, tabPanel)
+    setSelectedComponent(tabPanel)
+  }
 
 }

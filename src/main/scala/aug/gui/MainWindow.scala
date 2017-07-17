@@ -1,6 +1,6 @@
 package aug.gui
 
-import java.awt.event.{WindowEvent, WindowListener}
+import java.awt.event._
 import java.awt.{Frame, Insets}
 import javax.imageio.ImageIO
 import javax.swing._
@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory
 class MainWindow extends JFrame {
   import MainWindow.log
 
-  val tabbedPane = new TabbedPane
+  val tabbedPane = new TabbedPane(this)
   val menus = new JMenuBar
 
   val settingsWindow = new SettingsWindow(this)
@@ -26,25 +26,49 @@ class MainWindow extends JFrame {
   setTitle("August MC")
   setSize(1000,900)
 
-  private val fileMenu: JMenu = new JMenu("File")
-  private val preferences: JMenu = new JMenu("Preferences")
+  private val profileMenu: JMenu = new JMenu("profile")
 
-  menus.add(fileMenu)
+  private val preferences = new JMenuItem("preferences")
+  private val openProfileMenuItem = new JMenuItem("open profile")
+  private val closeProfileMenuItem = new JMenuItem("close profile")
+
+  private val connectionsMenu: JMenu = new JMenu("connections")
+
+  private val connectMenuItem = new JMenuItem("connect")
+  private val reconnectMenuItem = new JMenuItem("reconnect")
+  private val disconnectMenuItem = new JMenuItem("disconnect")
+
+  profileMenu.add(openProfileMenuItem)
+  profileMenu.add(closeProfileMenuItem)
+
+  connectionsMenu.add(connectMenuItem)
+  connectionsMenu.add(reconnectMenuItem)
+  connectionsMenu.add(disconnectMenuItem)
+
+  menus.add(profileMenu)
+  menus.add(connectionsMenu)
+
+  openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta O"))
+  closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta W"))
+
+  reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta R"))
+  connectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta C"))
+  disconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta D"))
 
   if (OsTools.isMac) {
     OsTools.macHandlePreferences(() => displaySettings)
     OsTools.macHandleQuit(() => Main.exit)
   } else {
-    fileMenu.add(preferences)
+    profileMenu.add(preferences)
 
-    preferences.addMenuListener(new MenuListener {
-      override def menuSelected(e: MenuEvent): Unit = {}
-
-      override def menuDeselected(e: MenuEvent): Unit = displaySettings
-
-      override def menuCanceled(e: MenuEvent): Unit = {}
+    preferences.addActionListener(new ActionListener {
+      override def actionPerformed(e: ActionEvent): Unit = displaySettings
     })
   }
+
+  openProfileMenuItem.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = openProfile
+  })
 
   setJMenuBar(menus)
 
@@ -62,11 +86,30 @@ class MainWindow extends JFrame {
     override def windowIconified(e: WindowEvent): Unit = {}
   })
 
+  connectMenuItem.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = tabbedPane.active.profile.connect
+  })
+
+  reconnectMenuItem.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = tabbedPane.active.profile.reconnect
+  })
+
+  disconnectMenuItem.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = tabbedPane.active.profile.disconnect
+  })
+
+  closeProfileMenuItem.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = {
+      ConfigManager.deactivateProfile(tabbedPane.active.profile.name)
+    }
+  })
+
+  def openProfile = new OpenProfileDialog(this)
+
   def displaySettings = {
     settingsWindow.setVisible(true)
     settingsWindow.toFront()
   }
-
 }
 
 object MainWindow {
