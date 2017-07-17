@@ -2,7 +2,7 @@ package aug.profile
 
 import java.awt.Color
 
-import aug.gui.{MainWindow, TabPanel}
+import aug.gui.{MainWindow, ProfilePanel}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -41,7 +41,7 @@ case object UserCommand extends ProfileEvent
 class Profile(profileConfig: ProfileConfig, mainWindow: MainWindow) {
   import Profile.log
 
-  val tabPanel = new TabPanel(mainWindow, this)
+  val tabPanel = new ProfilePanel(mainWindow, this)
   val name = profileConfig.name
   mainWindow.tabbedPane.addProfile(name, tabPanel)
 

@@ -7,7 +7,7 @@ import javax.swing.{JPanel, JTabbedPane, SpringLayout, UIManager}
 import aug.profile.Profile
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
-class TabPanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel {
+class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel {
   val springLayout = new SpringLayout
   val text = new Text
   val textArea = new SplittableTextArea(text)
@@ -34,19 +34,33 @@ class TabPanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel 
   springLayout.putConstraint(SpringLayout.SOUTH, textArea, 0, SpringLayout.NORTH, commandLine)
 }
 
+class SystemPanel(mainWindow: MainWindow) extends JPanel {
+  setLayout(new GridLayout(1, 1))
+
+  val text = new Text
+  val textArea = new SplittableTextArea(text)
+
+  textArea.setFont(new Font( "Monospaced", Font.PLAIN, 14 ))
+
+  add(textArea)
+
+  setBorder(new EmptyBorder(0, 0, 0, 0))
+}
+
 class TabbedPane(mainWindow: MainWindow) extends JTabbedPane {
-  addTab("system", new TabPanel(mainWindow, null))
 
   setUI(new DarculaTabbedPaneUI() {
     override def paintFocusIndicator(g: Graphics, tabPlacement: Int, rects: Array[Rectangle], tabIndex: Int,
                                      iconRect: Rectangle, textRect: Rectangle, isSelected: Boolean): Unit = {}
   })
 
-  def active = getComponentAt(getSelectedIndex).asInstanceOf[TabPanel]
-
-  def addProfile(name: String, tabPanel: TabPanel) = {
-    addTab(name, tabPanel)
-    setSelectedComponent(tabPanel)
+  def active : Option[ProfilePanel] = {
+    val c = getComponentAt(getSelectedIndex)
+    if (c.isInstanceOf[ProfilePanel]) Some(c.asInstanceOf[ProfilePanel]) else None
   }
 
+  def addProfile(name: String, profilePanel: ProfilePanel) = {
+    addTab(name, profilePanel)
+    setSelectedComponent(profilePanel)
+  }
 }

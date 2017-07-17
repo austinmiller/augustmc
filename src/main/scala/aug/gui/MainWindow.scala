@@ -8,7 +8,7 @@ import javax.swing.event.{MenuEvent, MenuListener}
 
 import aug.gui.settings.SettingsWindow
 import aug.io.TransparentColor
-import aug.profile.ConfigManager
+import aug.profile.{ConfigManager, Profile}
 import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -16,7 +16,11 @@ import org.slf4j.LoggerFactory
 class MainWindow extends JFrame {
   import MainWindow.log
 
+  val systemPanel = new SystemPanel(this)
+
   val tabbedPane = new TabbedPane(this)
+  tabbedPane.addTab("system", systemPanel)
+
   val menus = new JMenuBar
 
   val settingsWindow = new SettingsWindow(this)
@@ -86,23 +90,18 @@ class MainWindow extends JFrame {
     override def windowIconified(e: WindowEvent): Unit = {}
   })
 
-  connectMenuItem.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = tabbedPane.active.profile.connect
-  })
+  def addProfileAction(jMenuItem: JMenuItem, callback: (Profile) => Unit) : Unit = {
+    jMenuItem.addActionListener(new ActionListener {
+      override def actionPerformed(e: ActionEvent): Unit = {
+        tabbedPane.active.map(_.profile).foreach(callback)
+      }
+    })
+  }
 
-  reconnectMenuItem.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = tabbedPane.active.profile.reconnect
-  })
-
-  disconnectMenuItem.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = tabbedPane.active.profile.disconnect
-  })
-
-  closeProfileMenuItem.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = {
-      ConfigManager.deactivateProfile(tabbedPane.active.profile.name)
-    }
-  })
+  addProfileAction(connectMenuItem, (profile: Profile) => profile.connect)
+  addProfileAction(reconnectMenuItem, (profile: Profile) => profile.reconnect)
+  addProfileAction(disconnectMenuItem, (profile: Profile) => profile.disconnect)
+  addProfileAction(closeProfileMenuItem, (profile: Profile) => ConfigManager.deactivateProfile(profile.name))
 
   def openProfile = new OpenProfileDialog(this)
 
@@ -134,13 +133,13 @@ object Main extends App {
 
   def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
 
-  val text = mainWindow.tabbedPane.active.text
+  val text = mainWindow.systemPanel.text
 
   text.addText("hello world\n" + colorCode("33;44") + "next liney" +
     colorCode("46;34") + " more of this line" +
     "\n" + colorCode("36;42") + "third line" + colorCode("0"))
 
-  mainWindow.tabbedPane.active.textArea.repaint()
+  mainWindow.systemPanel.repaint()
 
   def exit : Unit = {
     Frame.getFrames.foreach(_.dispose())
