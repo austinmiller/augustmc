@@ -150,6 +150,8 @@ class GlobalConfigPanel(settingsWindow: SettingsWindow) extends JPanel {
 
 class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
 
+  import mainWindow.slog
+
   val colorSchemes = mutable.Map[String, ColorSchemeConfig]()
   val profiles = mutable.Map[String, ProfileConfigPanel]()
 
@@ -244,6 +246,8 @@ class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
     dirtyMainConfig = true
     dirtyProfiles.clear
     okPanel.applyButton.setEnabled(false)
+
+    slog.info("saved settings")
   }
 
   addWindowListener(new WindowListener {

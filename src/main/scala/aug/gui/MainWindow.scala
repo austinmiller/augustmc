@@ -7,7 +7,7 @@ import javax.swing._
 import javax.swing.event.{MenuEvent, MenuListener}
 
 import aug.gui.settings.SettingsWindow
-import aug.io.TransparentColor
+import aug.io.{SystemLog, TransparentColor}
 import aug.profile.{ConfigManager, Profile}
 import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
@@ -16,7 +16,10 @@ import org.slf4j.LoggerFactory
 class MainWindow extends JFrame {
   import MainWindow.log
 
+  val version = "0.1.dev"
   val systemPanel = new SystemPanel(this)
+  val slog = new SystemLog(systemPanel)
+  slog.raw("August MC "+version)
 
   val tabbedPane = new TabbedPane(this)
   tabbedPane.addTab("system", systemPanel)
@@ -109,6 +112,8 @@ class MainWindow extends JFrame {
     settingsWindow.setVisible(true)
     settingsWindow.toFront()
   }
+
+  setVisible(true)
 }
 
 object MainWindow {
@@ -129,17 +134,6 @@ object Main extends App {
   UIManager.put("Button.darcula.disabledText.shadow", TransparentColor)
 
   val mainWindow = new MainWindow
-  mainWindow.setVisible(true)
-
-  def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
-
-  val text = mainWindow.systemPanel.text
-
-  text.addText("hello world\n" + colorCode("33;44") + "next liney" +
-    colorCode("46;34") + " more of this line" +
-    "\n" + colorCode("36;42") + "third line" + colorCode("0"))
-
-  mainWindow.systemPanel.repaint()
 
   def exit : Unit = {
     Frame.getFrames.foreach(_.dispose())
