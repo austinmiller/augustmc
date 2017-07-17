@@ -1,68 +1,38 @@
 package aug.script
 
-import java.awt.Color
-import java.io.{File, PrintWriter, StringWriter}
+import java.io.File
 import java.net.{URL, URLClassLoader}
-import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import aug.profile._
+import aug.script.shared.{ClientInterface, ProfileInterface}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
-import scala.collection.immutable.IndexedSeq
 import scala.util.{Failure, Success, Try}
 
 object ScriptLoader {
   val log = Logger(LoggerFactory.getLogger(ScriptLoader.getClass))
 
-  val sharedClasses = Set(
-    classOf[ProfileEventListener],
-    classOf[ProfileEvent],
-    TelnetConnect.getClass
+  private val clientInterfaceT = classOf[ClientInterface]
 
-  ) map { _.getCanonicalName }
-
-  def classpath: Array[URL] = {
-    val classpath: String = System.getProperty("java.class.path")
-    val urls = Seq.newBuilder[URL]
-    for (dir <- classpath.split(":")) yield {
-      log.trace("Adding classpath URL {}", dir)
-      urls += new File(dir.replaceAll("\\;C","")).toURI.toURL
+  def constructScript(profileConfig: ProfileConfig): Script = {
+    val classpath = profileConfig.javaConfig.classPath.map(new File(_).toURI.toURL)
+    val mainClass = profileConfig.javaConfig.mainClass
+    val scriptLoader = new ScriptLoader(classpath)
+    val clientT = scriptLoader.loadClass(mainClass)
+    if (!clientInterfaceT.isAssignableFrom(clientT)) {
+      throw MainClassNotClientInterface
     }
 
-    urls.result.toArray
-  }
-
-  private def loadScript(className: String, scriptLoader: ScriptLoader, profile: Profile) : ProfileEventListener = {
-
-    def loadBasicScript = scriptLoader.loadClass(classOf[BasicScript].getCanonicalName).newInstance().asInstanceOf[ProfileEventListener]
-
-    if(className.isEmpty) loadBasicScript else {
-      Try {
-        log.info("loading script class {}", className)
-        scriptLoader.loadClass(className).newInstance().asInstanceOf[ProfileEventListener]
-      } match {
-        case Success(c) => c
-        case Failure(e) =>
-//          profile.info(s"ERROR: cannot load script $className")
-          loadBasicScript
-      }
-    }
-  }
-
-  def newScript(className: String, scriptDir: File, profile: Profile) = {
-    val scriptLoader = new ScriptLoader(classpath :+ scriptDir.toURI.toURL)
-
-    val script = loadScript(className,scriptLoader,profile)
-
-    val srType = scriptLoader.loadClass(classOf[ScriptRunner].getCanonicalName)
-    val scriptRunner = srType.getConstructor(classOf[ProfileInterface],classOf[ProfileEventListener])
-      .newInstance(profile,script).asInstanceOf[ProfileEventListener]
-
-    scriptRunner
+    val client = clientT.newInstance().asInstanceOf[ClientInterface]
+    new Script(profileConfig, client)
   }
 }
+
+object MainClassNotClientInterface extends RuntimeException("main class doesn't extend client class")
 
 private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.currentThread().getContextClassLoader) {
 
@@ -72,7 +42,7 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
     override def findClass(name: String) = super.findClass(name)
   }
 
-  private class ChildClassLoader(val urls: Array[URL], realParent: DetectClass) extends URLClassLoader(urls,null) {
+  private class ChildClassLoader(val urls: Array[URL], realParent: DetectClass) extends URLClassLoader(urls, null) {
 
     override def findClass(name: String): Class[_] = {
 
@@ -90,146 +60,118 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
         } match {
           case Failure(e) =>
             log.error(s"failed to load in jail $name", e)
-            realParent.loadClass(name)
+            throw new ClassNotFoundException()
           case Success(c) => c
         }
       }
     }
 
     def deferToParent(name:String) : Boolean = {
-      name.startsWith("aug.profile.") ||
+      name.startsWith("aug.script.shared") ||
       name.startsWith("java") ||
       name.startsWith("scala")
     }
   }
 
-  private val childClassLoader = new ChildClassLoader(urls,new DetectClass(getParent))
+  private val childClassLoader = new ChildClassLoader(urls, new DetectClass(getParent))
 
   override protected def loadClass(name: String, resolve: Boolean) : Class[_] = {
     Try {
       childClassLoader.findClass(name)
     } match {
-      case Failure(e) => super.loadClass(name,resolve)
+      case Failure(e) => throw e
       case Success(c) => c
     }
   }
 
 }
 
-class ScriptRunner (val profile: ProfileInterface, val script: ProfileEventListener) extends ProfileEventListener {
+sealed trait ScriptEventType
 
-  private val buffer = ByteBuffer.allocate(2<<20)
-  private var pos = 0
-  private val lastColor = "[0"
+case object OnConnectScriptEventType extends ScriptEventType
+case object OnDisconnectScriptEventType extends ScriptEventType
 
+case class InitScriptEventType(profile: ProfileInterface) extends ScriptEventType
+case class HandleLineScriptEventType(line: String) extends ScriptEventType
+case class HandleFragmentScriptEventType(line: String) extends ScriptEventType
+case class HandleGmcpScriptEventType(line: String) extends ScriptEventType
+case class HandleCommandScriptEventType(cmd: String) extends ScriptEventType
 
-  Game.profile = Some(profile)
-  dispatch(ScriptInit)
+object OutOfTimeException extends RuntimeException("script did not return in time")
 
+class Script private[script] (profileConfig: ProfileConfig, client: ClientInterface) extends AutoCloseable
+  with ClientInterface {
+  import ScriptLoader.log
+  import Util.Implicits._
 
-  private def dispatch(event: ProfileEvent, data: Option[String] = None): Unit = {
-    Try {
-      script.event(event,data)
-    } match {
-      case Failure(e)=> Game.handleException(e)
-      case _ =>
-    }
-  }
-  override def event(event: ProfileEvent, data: Option[String]): Unit = {
-    event match {
-      case TelnetConnect => profile.echo("--connected--\n",Some(Color.YELLOW))
-      case TelnetDisconnect => profile.echo("--disconnected--\n",Some(Color.YELLOW))
-      case TelnetRecv => data map { s=> recv(s)}
-      case ScriptClose => Game.close
-      case UserCommand => data map { s => Alias.processAliases(s) }
-      case _ =>
-    }
+  private val thread = new Thread(loop(), "Script : " + profileConfig.name)
+  private val running = new AtomicBoolean(true)
+  private var startLatch = new CountDownLatch(1)
+  private var finishLatch = new CountDownLatch(1)
+  private var scriptEventType : ScriptEventType = OnConnectScriptEventType
 
-    dispatch(event,data)
-  }
+  thread.start()
 
-  private def handleLine(): Unit = {
-    val newLine = new String(buffer.array(),0,buffer.position())
-    val noColors = Util.removeColors(newLine)
+  private def loop() : Unit = {
+    while(running.get) {
+      startLatch.await()
 
-    Trigger.processTriggers(newLine)
+      if (!thread.isInterrupted) {
+        Try {
+          scriptEventType match {
+            case InitScriptEventType(profile) => client.init(profile)
+            case OnConnectScriptEventType => client.onConnect()
+            case OnDisconnectScriptEventType => client.onDisconnect()
+            case HandleLineScriptEventType(line) => client.handleLine(line)
+            case HandleFragmentScriptEventType(line) => client.handleFragment(line)
+            case HandleGmcpScriptEventType(line) => client.handleGmcp(line)
+            case HandleCommandScriptEventType(cmd) => client.handleCommand(cmd)
+          }
+        } match {
+          case Failure(e) =>
+            log.error("caught script exception", e)
+          case _ =>
+        }
 
-    if(pos != 0)
-      profile.addColoredText(newLine.substring(pos))
-    else
-      profile.addColoredText(newLine)
-
-    dispatch(ScriptNewLine, Some(noColors))
-    dispatch(ScriptNewColorLine,Some(newLine))
-
-    buffer.clear
-    buffer.put(27.toByte)
-    buffer.put(lastColor.getBytes)
-    buffer.put('m'.toByte)
-  }
-
-  private def handleFragment() : Unit = {
-    val fragment = new String(buffer.array(),0,buffer.position())
-    val noColors = Util.removeColors(fragment)
-
-    Trigger.processFragmentTriggers(fragment)
-
-    profile.addColoredText(fragment)
-    buffer.clear
-
-    dispatch(ScriptFragment,Some(noColors))
-    dispatch(ScriptColorFragment,Some(fragment))
-  }
-
-  private def recv(txt: String) = {
-    val bytes = txt.getBytes
-
-    for(b <- bytes) {
-      buffer.put(b)
-      if(b=='\n') {
-        handleLine()
+        val currentFinishLatch = finishLatch
+        finishLatch = new CountDownLatch(1)
+        startLatch = new CountDownLatch(1)
+        currentFinishLatch.countDown()
       }
     }
 
-    handleFragment()
+    client.shutdown()
   }
-}
 
-class BasicScript extends ProfileEventListener {
-  override def event(event: ProfileEvent, data: Option[String]): Unit = {
-    event match {
-      case _ =>
+  override def close(): Unit = {
+    if (running.compareAndSet(true, false)) {
+      thread.interrupt()
+      thread.join(1000)
     }
   }
-}
 
-object Game extends ProfileInterface {
+  override def shutdown(): Unit = close()
 
-  private[script] var profile : Option[ProfileInterface] = None
-  val log = Logger(LoggerFactory.getLogger(Game.getClass))
-
-  def handleException(t: Throwable) : Unit = {
-    val sw = new StringWriter()
-    t.printStackTrace(new PrintWriter(sw))
-    log.error("Game exception",t)
-    echo(sw.toString + "\n")
-
+  private def execute(scriptEventType: ScriptEventType): Unit = {
+    val finishLatch = this.finishLatch
+    this.scriptEventType = scriptEventType
+    startLatch.countDown()
+    if(!finishLatch.await(1000, TimeUnit.MILLISECONDS)) {
+      throw OutOfTimeException
+    }
   }
 
-  def close : Unit = {
+  override def init(profile: ProfileInterface): Unit = execute(InitScriptEventType(profile))
 
-  }
+  override def onConnect(): Unit = execute(OnConnectScriptEventType)
 
-  def header(s: String) = {
-    val sl: IndexedSeq[Char] = for(i<-1 to s.length) yield '='
-    Game.echo(s"\n$s\n${sl.mkString("")}\n")
-  }
+  override def handleLine(s: String): Unit = execute(HandleLineScriptEventType(s))
 
-  override def info(s: String, window: String = defaultWindow): Unit = profile map { _.info(s,window) }
-  override def addColoredText(s: String, window: String = defaultWindow): Unit = profile map { _.addColoredText(s,window) }
-  override def echo(s: String, color: Option[Color], window: String = defaultWindow): Unit = profile map { _.echo(s,color,window) }
-  override def consumeNextCommand(): Unit = profile map { _.consumeNextCommand() }
-  override def send(s: String): Unit = profile map (_.send(s))
-  override def sendGmcp(s: String): Unit = profile map (_.sendGmcp(s))
-  override def connected: Boolean = profile map {_.connected} getOrElse false
+  override def handleFragment(s: String): Unit = execute(HandleFragmentScriptEventType(s))
+
+  override def onDisconnect(): Unit = execute(OnDisconnectScriptEventType)
+
+  override def handleGmcp(s: String): Unit = execute(HandleGmcpScriptEventType(s))
+
+  override def handleCommand(s: String): Unit = execute(HandleCommandScriptEventType(s))
 }

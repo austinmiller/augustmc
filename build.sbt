@@ -8,6 +8,7 @@ unmanagedSourceDirectories in Compile += baseDirectory.value / "darcula/src"
 
 unmanagedJars in Compile += file("darcula/lib/iconloader.jar")
 unmanagedJars in Compile += file("darcula/lib/annotations.jar")
+unmanagedJars in Compile += file("aug-shared.jar")
 
 val springVersion = "4.2.6.RELEASE"
 val jacksonVersion = "2.7.4"
