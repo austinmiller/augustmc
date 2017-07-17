@@ -7,7 +7,7 @@ import javax.swing._
 import javax.swing.event.{MenuEvent, MenuListener}
 
 import aug.gui.settings.SettingsWindow
-import aug.io.{SystemLog, TransparentColor}
+import aug.io.{ConnectionManager, SystemLog, TransparentColor}
 import aug.profile.{ConfigManager, Profile}
 import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
@@ -59,7 +59,7 @@ class MainWindow extends JFrame {
   closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta W"))
 
   reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta R"))
-  connectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta C"))
+  connectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta T"))
   disconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta D"))
 
   if (OsTools.isMac) {
@@ -122,6 +122,7 @@ object MainWindow {
 
 object Main extends App {
   ConfigManager.load
+  ConnectionManager.start
 
   OsTools.init("August MC")
 
@@ -136,6 +137,8 @@ object Main extends App {
   val mainWindow = new MainWindow
 
   def exit : Unit = {
+    ConfigManager.closeAllProfiles
+    ConnectionManager.close()
     Frame.getFrames.foreach(_.dispose())
     System.exit(0)
   }

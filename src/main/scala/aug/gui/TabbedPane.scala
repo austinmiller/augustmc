@@ -2,37 +2,9 @@ package aug.gui
 
 import java.awt._
 import javax.swing.border.EmptyBorder
-import javax.swing.{JPanel, JTabbedPane, SpringLayout, UIManager}
+import javax.swing.{JPanel, JTabbedPane}
 
-import aug.profile.Profile
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
-
-class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel {
-  val springLayout = new SpringLayout
-  val text = new Text
-  val textArea = new SplittableTextArea(text)
-  val commandLine = new CommandLine
-
-  commandLine.grabFocus
-
-  textArea.setFont(new Font( "Monospaced", Font.PLAIN, 20 ))
-
-  setLayout(springLayout)
-  add(textArea)
-  add(commandLine)
-
-  setBorder(new EmptyBorder(0, 0, 0, 0))
-
-  springLayout.putConstraint(SpringLayout.WEST, textArea, 0, SpringLayout.WEST, this)
-  springLayout.putConstraint(SpringLayout.NORTH, textArea, 0, SpringLayout.NORTH, this)
-  springLayout.putConstraint(SpringLayout.EAST, textArea, 0, SpringLayout.EAST, this)
-
-  springLayout.putConstraint(SpringLayout.WEST, commandLine, 0, SpringLayout.WEST, this)
-  springLayout.putConstraint(SpringLayout.SOUTH, commandLine, 0, SpringLayout.SOUTH, this)
-  springLayout.putConstraint(SpringLayout.EAST, commandLine, 0, SpringLayout.EAST, this)
-
-  springLayout.putConstraint(SpringLayout.SOUTH, textArea, 0, SpringLayout.NORTH, commandLine)
-}
 
 class SystemPanel(mainWindow: MainWindow) extends JPanel {
   setLayout(new GridLayout(1, 1))

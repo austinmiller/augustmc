@@ -145,11 +145,21 @@ object ConfigManager {
   def setProfile(profileConfig: ProfileConfig) = synchronized {
     profiles(profileConfig.name) = profileConfig
     saveProfile(profileConfig.name)
+    activeProfiles.get(profileConfig.name).foreach(_.setProfileConfig(profileConfig))
   }
 
   def deactivateProfile(name: String) = synchronized {
+    activeProfiles.get(name).foreach { profile=>
+      profile.close
+    }
 
+    activeProfiles.remove(name)
   }
+
+  def closeAllProfiles = synchronized( {
+    activeProfiles.keys.foreach(deactivateProfile)
+    activeProfiles.clear()
+  })
 
   private def saveProfile(name: String) = synchronized {
     profiles.get(name).foreach { pc =>

@@ -161,7 +161,7 @@ object ConnectionManager extends AutoCloseable with Runnable  {
   private val thread	= new Thread(this, "TelnetManager");
   private val connectors  = new scala.collection.mutable.ListBuffer[Connector]
 
-  def register(connector: Connector) : Unit = register(connector,None)
+  def register(connector: Connector) : Unit = register(connector, None)
 
   def register(connector: Connector, channel: Option[SocketChannel]): Unit = {
     val ops = if(channel.isEmpty) SelectionKey.OP_READ | SelectionKey.OP_WRITE | SelectionKey.OP_CONNECT else

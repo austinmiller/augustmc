@@ -13,10 +13,13 @@ class SystemLog(systemPanel: SystemPanel) {
     systemPanel.text.addText(msg)
   }
 
-  def info(msg: String, args: Object*) = {
+  def info(msg: String, args: Object*) = log("INFO", "37", msg, args)
+  def error(msg: String, args: Object*) = log("ERROR", "31", msg, args)
+
+  private def log(category: String, colorCode: String, msg: String, args: Object*) = {
     val m = String.format(msg, args)
-    val txt = "\n" + ColorUtils.colorCode("37") +
-      dateFormat.format(new Date) + " INFO: " + ColorUtils.colorCode("0") + msg
+    val txt = "\n" + ColorUtils.colorCode(colorCode) + dateFormat.format(new Date) +
+      " " + category + ": " + ColorUtils.colorCode("0") + msg
     systemPanel.text.addText(txt)
     systemPanel.repaint()
   }

@@ -5,6 +5,7 @@ import java.awt.event.{KeyEvent, KeyListener}
 import javax.swing.{BorderFactory, JTextArea}
 
 import aug.io.SidePanelColor
+import aug.profile.{Profile, UserCommand}
 import aug.util.RingBuffer
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -14,11 +15,10 @@ object CommandLine {
 }
 
 
-class CommandLine extends JTextArea with KeyListener {
+class CommandLine(profile: Profile) extends JTextArea with KeyListener {
 
   val log = CommandLine.log
 
-//  private val listeners = ListBuffer[CommandLineListener]()
   val history = new RingBuffer[String](20)
   var historyIndex = -1
 
@@ -30,8 +30,6 @@ class CommandLine extends JTextArea with KeyListener {
   setBorder(BorderFactory.createLineBorder(SidePanelColor, 3))
 
   addKeyListener(this)
-
-//  def addCommandLineListener(listener: CommandLineListener) = listeners += listener
 
   def process(e: KeyEvent) {
     if(!e.isConsumed || e.getComponent.equals(this)) return
@@ -45,7 +43,7 @@ class CommandLine extends JTextArea with KeyListener {
     if(history(0) != msg) history.push(msg)
     historyIndex = -1
 
-//    listeners.foreach{_.execute(msg)}
+    profile.event(UserCommand, Some(msg))
   }
 
   override def keyTyped(e: KeyEvent): Unit = {}

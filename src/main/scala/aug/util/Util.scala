@@ -95,6 +95,10 @@ class RingBuffer[A](val capacity: Int)(implicit m: ClassTag[A]) extends scala.co
 
 object Util {
 
+  object Implicits {
+    implicit def runnable(f: => Unit): Runnable = new Runnable() { def run() = f }
+  }
+
   val tp = Executors.newFixedThreadPool(1)
 
   def invokeLater(f: () => Unit) = {

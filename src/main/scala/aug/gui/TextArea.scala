@@ -291,36 +291,8 @@ class TextArea(val text: Text) extends JPanel {
       case (line, index) => drawLine(line.fragments, 5, height - index * fontHeight)
     }
 
-    println("took "+(System.currentTimeMillis() - ts) + " millis")
+//    println("took "+(System.currentTimeMillis() - ts) + " millis")
   }
-}
-
-object Tester extends App {
-
-  val frame = new JFrame
-  val text = new Text
-  val textArea = new SplittableTextArea(text)
-
-  def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
-
-  text.addText("hello world\n" + colorCode("33;44") + "next liney" +
-    colorCode("46;34") + " more of this line" +
-    "\n" + colorCode("36;42") + "third line" + colorCode("0"))
-  textArea.setFont(new Font( "Monospaced", Font.PLAIN, 20 ))
-
-  frame.setTitle("Tester")
-  frame.setSize(800, 600)
-  frame.add(textArea)
-  frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE)
-
-  frame.setVisible(true)
-
-  for (i <- 0 to 100) {
-    text.addText("\n a line: "+i)
-  }
-
-  textArea.repaint()
-
 }
 
 class SplittableTextArea(text: Text) extends JSplitPane with MouseWheelListener {

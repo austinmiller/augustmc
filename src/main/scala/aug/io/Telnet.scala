@@ -78,6 +78,7 @@ object Telnet {
 }
 
 class Telnet(val url: String, val port: Int) extends AbstractConnection(new InetSocketAddress(url,port)) {
+  import Telnet.log
 
   val inflater = new Inflater()
   val listeners = new scala.collection.mutable.ListBuffer[ProfileEventListener]
@@ -103,6 +104,7 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
   }
 
   override def connect = {
+    log.info(f"connecting to $url:$port")
     super.connect
   }
 
