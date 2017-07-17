@@ -145,7 +145,8 @@ class OkPanel(settingsWindow: SettingsWindow) extends JPanel {
 }
 
 class GlobalConfigPanel(settingsWindow: SettingsWindow) extends JPanel {
-  add(new ColorSchemeConfigPanel(settingsWindow))
+  val colorSchemeConfigPanel = new ColorSchemeConfigPanel(settingsWindow)
+  add(colorSchemeConfigPanel)
 }
 
 class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
@@ -202,10 +203,14 @@ class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
   }
 
   def reloadFromConfig = {
+    colorSchemes.clear
+    profiles.clear
+
     ConfigManager.getMainConfig.colorSchemes.foreach { cs=> colorSchemes(cs.name) = cs }
     DefaultColorSchemes.colorSchemes.foreach { cs => colorSchemes(cs.name) = cs }
 
-    profiles.clear
+    globalConfigPanel.colorSchemeConfigPanel.updateColorSchemes
+
     ConfigManager.getProfiles.foreach { pc => profiles(pc.name) = new ProfileConfigPanel(this, pc) }
     tree.setProfiles(profiles.values.toList)
 
