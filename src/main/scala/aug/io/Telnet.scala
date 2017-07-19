@@ -286,10 +286,10 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   }
 
   def send(option: TelnetOption, message: String): Unit = {
-    val cmd : Array[Byte] = constructCommand(TelnetSB,option)
-    val stop : Array[Byte] = Array(TelnetIac.code,TelnetSE.code)
+    val cmd : Array[Byte] = constructCommand(TelnetSB, option)
+    val stop : Array[Byte] = Array(TelnetIac.code, TelnetSE.code)
 
-    send(Util.concatenate(cmd,message.getBytes,stop))
+    send(Util.concatenate(cmd, message.getBytes, stop))
   }
 
   private def startCompression() : Unit = {

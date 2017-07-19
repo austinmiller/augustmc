@@ -41,7 +41,9 @@ case class ColorSchemeConfig(
 @XmlAccessorType(XmlAccessType.FIELD)
 case class TelnetConfig(
                          host: String = "",
-                         port: Int = 23
+                         port: Int = 23,
+                         fragmentTimeout: Long = 250,
+                         echo: Boolean = true
                        ) {
   private def this() = this("")
 }
@@ -49,11 +51,12 @@ case class TelnetConfig(
 @XmlRootElement(name = "JavaConfig")
 @XmlAccessorType(XmlAccessType.FIELD)
 case class JavaConfig(
-                       enabled: Boolean = false,
+                       clientMode: String = "disabled",
                        mainClass: String = "",
-                       classPath: Array[String] = Array.empty
+                       classPath: Array[String] = Array.empty,
+                       clientTimeout: Int = 500
                      ) {
-  private def this() = this(false)
+  private def this() = this("disabled")
 }
 
 @XmlRootElement(name = "MainConfig")

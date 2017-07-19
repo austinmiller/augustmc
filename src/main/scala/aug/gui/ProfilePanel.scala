@@ -32,8 +32,8 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
 
   springLayout.putConstraint(SpringLayout.SOUTH, textArea, 0, SpringLayout.NORTH, commandLine)
 
-  def addText(newText: String): Unit = {
-    text.addText(newText)
-    repaint()
-  }
+
+  def setLine(lineNum: Long, txt: String) = text.setLine(lineNum, txt)
+
+  def addCommand(lineNum: Long, cmd: String) = text.addCommand(lineNum, cmd)
 }

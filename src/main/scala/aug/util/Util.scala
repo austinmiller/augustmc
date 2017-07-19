@@ -99,10 +99,22 @@ object Util {
     implicit def runnable(f: => Unit): Runnable = new Runnable() { def run() = f }
   }
 
-  val tp = Executors.newFixedThreadPool(1)
+  val tp = Executors.newCachedThreadPool()
 
   def invokeLater(f: () => Unit) = {
-    tp.submit(new Runnable() { def run = f()})
+    tp.submit(new Runnable { def run = f() })
+  }
+
+  def invokeLater(timeout: Long, f: () => Unit) = {
+    tp.submit(new Runnable {
+      override def run(): Unit = {
+        Try {
+          Thread.sleep(timeout)
+        }
+
+        f()
+      }
+    })
   }
 
   val log = Logger(LoggerFactory.getLogger(Util.getClass))

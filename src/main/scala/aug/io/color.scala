@@ -19,7 +19,7 @@ case object TelnetColorCyan extends TelnetColor
 case object TelnetColorWhite extends TelnetColor
 
 
-case class ColorCode(fg: TelnetColor, bg: TelnetColor, bold: Boolean) {
+case class ColorCode(fg: TelnetColor, bg: TelnetColor = TelnetColorDefaultBg, bold: Boolean = false) {
   def fgColor(colorScheme: ColorScheme) = if (bold) colorScheme.boldColor(fg) else colorScheme.color(fg)
   def bgColor(colorScheme: ColorScheme) = colorScheme.color(bg)
 }

@@ -9,9 +9,12 @@ import aug.util.Util
 class SystemLog(systemPanel: SystemPanel) {
 
   val dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")
+  private var lineNum : Long = 0
 
   def raw(msg: String) = {
-    systemPanel.text.addText(msg)
+    systemPanel.text.setLine(lineNum, msg)
+    lineNum += 1
+    systemPanel.repaint()
   }
 
   def info(msg: String, args: Object*) = log("INFO", "37", msg, args)
@@ -19,10 +22,9 @@ class SystemLog(systemPanel: SystemPanel) {
 
   private def log(category: String, colorCode: String, msg: String, args: Object*) = {
     val m = String.format(msg, args)
-    val txt = "\n" + Util.colorCode(colorCode) + dateFormat.format(new Date) +
+    val txt = Util.colorCode(colorCode) + dateFormat.format(new Date) +
       " " + category + ": " + Util.colorCode("0") + msg
-    systemPanel.text.addText(txt)
-    systemPanel.repaint()
+    raw(txt)
   }
 
 }

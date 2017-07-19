@@ -11,6 +11,7 @@ import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 sealed trait ProfileEvent extends Comparable[ProfileEvent] {
@@ -61,14 +62,16 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   val name = profileConfig.name
   mainWindow.tabbedPane.addProfile(name, profilePanel)
 
-  profilePanel.addText("profile: " + profileConfig.name+"\n")
+  addLine("profile: " + profileConfig.name)
 
   private var telnet : Option[Telnet] = None
   private var client : Option[Client] = None
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
   private val threadQueue = new PriorityBlockingQueue[ProfileEvent]()
   private val running = new AtomicBoolean(true)
-  private val swallowNextCommand = new AtomicBoolean(false)
+  private var lineNum: Long = 0
+  private var fragment: String = ""
+
   thread.start()
 
   def setProfileConfig(profileConfig: ProfileConfig) = synchronized(this.profileConfig = profileConfig)
@@ -88,10 +91,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         val event = threadQueue.take()
         event match {
           case TelnetConnect =>
-            synchronized {
-              profilePanel.addText("\n" + Util.colorCode("0") + "--connected--\n")
-              slog.info(s"profile $name connected")
-            }
+            addLine(Util.colorCode("0") + "--connected--")
+            slog.info(s"profile $name connected")
 
             client.foreach(_.onConnect())
 
@@ -100,14 +101,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case TelnetDisconnect =>
             synchronized {
-              profilePanel.addText("\n" + Util.colorCode("0") + "--disconnected--\n")
+              addLine(Util.colorCode("0") + "--disconnected--")
               slog.info(s"profile $name lost connection")
             }
 
             client.foreach(_.onDisconnect())
 
-          case TelnetRecv(data) =>
-            profilePanel.addText(data)
+          case TelnetRecv(data) => processText(data)
 
           case TelnetGMCP(data) =>
 
@@ -176,10 +176,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             log.error(s"unhandled event $unhandledEvent")
         }
       } match {
-        case Failure(TimeoutException) =>
-          log.error(s"profile $name: script ran out of time to respond")
-          slog.error(s"profile $name: script ran out of time to respond")
-          clientRestart
+        case Failure(to: TimeoutException) => clientTimedOut()
         case Failure(e) =>
           log.error("event handling failure", e)
           slog.error(f"event handling failure: ${e.getMessage}")
@@ -207,13 +204,113 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   override def close(): Unit = {
     if(running.compareAndSet(true, false)) {
       offer(CloseProfile)
-      thread.join(1000)
+      thread.join(profileConfig.javaConfig.clientTimeout + 500)
     }
   }
 
   /**
-    * <p>Send text now, without using event loop.  This should only be called by the
-    * event thread!</p>
+    * <p>Echo cmd to console</p>
+    *
+    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
+    *
+    */
+  private def echoCommand(cmd: String) : Unit = {
+    val ln = if (fragment.length > 0) lineNum else lineNum - 1
+    profilePanel.addCommand(ln, cmd)
+    profilePanel.repaint()
+  }
+
+  /**
+    * <p>Add line to console</p>
+    *
+    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
+    *
+    * @param line
+    */
+  private def addLine(line: String) : Unit = {
+    profilePanel.setLine(lineNum, line)
+    lineNum += 1
+    fragment = ""
+    profilePanel.repaint()
+  }
+
+  /**
+    * <p>Handle client timing out.</p>
+    *
+    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
+    *
+    */
+  private def clientTimedOut() : Unit = {
+    log.error(s"profile $name: script ran out of time to respond")
+    slog.error(s"profile $name: script ran out of time to respond")
+    offer(ClientStop)
+
+    if (profileConfig.javaConfig.clientMode == "autostart") {
+      offer(ClientStart)
+    }
+  }
+
+  /**
+    * <p>Process text sent from server.</p>
+    *
+    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
+    *
+    * @param txt
+    */
+  private def processText(txt: String) : Unit = {
+
+    @tailrec
+    def handleText(texts: List[String], clientTimedOut: Boolean = false): Boolean = {
+      texts match {
+
+        case List(last) =>
+          fragment += last
+          profilePanel.setLine(lineNum, fragment)
+
+          if (!clientTimedOut && client.isDefined) {
+            Try {
+              client.get.handleFragment(fragment)
+            } match {
+              case Failure(e: TimeoutException) => true
+              case _ => clientTimedOut
+            }
+          } else clientTimedOut
+
+        case text :: tail =>
+          val line = fragment + text
+
+          val didWeTimeout = if (!clientTimedOut && client.isDefined) {
+            Try {
+              if(!client.get.handleLine(lineNum, line)) {
+                addLine(line)
+              }
+            } match {
+              case Failure(e: TimeoutException) =>
+                addLine(line)
+                true
+              case _ => false
+            }
+          } else {
+            addLine(line)
+            clientTimedOut
+          }
+
+          handleText(tail, didWeTimeout)
+
+        case Nil => clientTimedOut
+      }
+    }
+
+    if (handleText(txt.split("\n", -1).toList)) {
+      clientTimedOut()
+    }
+  }
+
+  /**
+    * <p>Send text now, without using event loop.</p>
+    *
+    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
+    *
     * @param cmds
     */
   private def sendNow(cmds: String) : Unit = {
@@ -221,7 +318,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       case Some(telnet) =>
         cmds.split("\n").foreach { cmd =>
           telnet.send(cmd + "\n")
-          profilePanel.addText(cmd + "\n")
+          echoCommand(cmd)
         }
 
       case None => slog.info(s"profile $name: command ignored: $cmds")

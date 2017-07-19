@@ -4,7 +4,7 @@ import java.awt.event.{MouseWheelEvent, MouseWheelListener}
 import java.awt.image.BufferedImage
 import java.awt.{Font, Graphics}
 import javax.swing.border.EmptyBorder
-import javax.swing.{JFrame, JPanel, JSplitPane}
+import javax.swing.{JPanel, JSplitPane}
 
 import aug.io._
 import com.typesafe.scalalogging.Logger
@@ -19,16 +19,23 @@ case class Fragment(text: String, colorCode: ColorCode) {
   }
 }
 
-class Line(val fragments: List[Fragment]) {
+case class Line(fragments: List[Fragment], commands: List[String]) {
   def :+(fragment: Fragment) = {
     if (!fragments.isEmpty && fragments.last.colorCode == fragment.colorCode) {
       appendToLastFragment(fragment.text)
-    } else new Line(fragments :+ fragment)
+    } else new Line(fragments :+ fragment, commands)
   }
 
   private def appendToLastFragment(text: String) = {
     val last = fragments.last
-    new Line(fragments.dropRight(1) :+ Fragment(last.text + text, last.colorCode))
+    new Line(fragments.dropRight(1) :+ Fragment(last.text + text, last.colorCode), commands)
+  }
+
+  def mergeCommands : Line = {
+    if (commands.isEmpty) this else {
+      val frag = Fragment(commands.mkString(" | "), ColorCode(TelnetColorYellow))
+      this.copy(fragments = this.fragments :+ frag)
+    }
   }
 
   def split(wrapAt: Int) : List[Line] = {
@@ -42,7 +49,7 @@ class Line(val fragments: List[Fragment]) {
 
     def addLine(fragment: Fragment) = {
       frags += fragment
-      lines += new Line(frags.result)
+      lines += new Line(frags.result, List.empty)
       frags.clear
     }
 
@@ -71,14 +78,14 @@ class Line(val fragments: List[Fragment]) {
 
     val result = frags.result
     if(!result.isEmpty) {
-      lines += new Line(result)
+      lines += new Line(result, List.empty)
     }
 
     lines.result
   }
 }
 
-object EmptyLine extends Line(List.empty)
+object EmptyLine extends Line(List.empty, List.empty)
 
 sealed trait TextState
 case object TextStateStream extends TextState
@@ -88,34 +95,53 @@ case object TextStateEscape extends TextState
 class Text {
 
   import Text.log
-  private val lines = new scala.collection.mutable.ArrayBuffer[Line]
+  private val lines = scala.collection.mutable.Map[Long, Line]()
+  private var botLine : Long = 0
 
-  lines += EmptyLine
+  lines(botLine) = EmptyLine
 
-  private val color = StringBuilder.newBuilder
-  private val text = StringBuilder.newBuilder
-  private var state : TextState = TextStateStream
-  private var colorCode : ColorCode = DefaultColorCode
+  def getWrapLines(numLines: Int, wrapAt: Int, botLine: Long) = synchronized {
 
-  def getWrapLines(numLines: Int, wrapAt: Int, botLine: Int) = {
+    val bl = if(botLine == -1) this.botLine else botLine
 
     @tailrec
-    def get(numLines: Int, lineNum: Int, rv: List[Line] = List.empty): List[Line] = {
+    def get(numLines: Int, lineNum: Long, rv: List[Line] = List.empty): List[Line] = {
       if(numLines <= 0 || lineNum < 0) {
         rv
       } else {
-        val toadd = lines(lineNum).split(wrapAt)
+        val toadd = lines.getOrElse(lineNum, EmptyLine).mergeCommands.split(wrapAt)
         get(numLines - toadd.size, lineNum - 1, toadd ++ rv)
       }
     }
 
-    val rv = get(numLines, botLine - 1)
+    val rv = get(numLines, bl)
     rv.drop(rv.length - numLines)
   }
 
-  def length = lines.size
+  def length = synchronized(botLine)
 
-  def addText(txt: String) = {
+  def addCommand(lineNum: Long, cmd: String) = synchronized {
+    val line = lines(lineNum)
+    lines(lineNum) = line.copy(commands = line.commands :+ cmd)
+  }
+
+  def setLine(lineNum: Long, txt: String) = synchronized {
+    if (txt.contains("\n")) throw new Exception("text should not contain newline")
+
+    var colorCode : ColorCode = DefaultColorCode
+
+    val color = StringBuilder.newBuilder
+    val text = StringBuilder.newBuilder
+    var state : TextState = TextStateStream
+
+    val fragments = List.newBuilder[Fragment]
+
+    def addFragment : Unit = {
+      if (text.size > 0) {
+        fragments +=  Fragment(text.result(), colorCode)
+        text.clear
+      }
+    }
 
     txt.getBytes.foreach { b =>
       state match {
@@ -123,15 +149,14 @@ class Text {
           if (b == 27.toByte) {
             addFragment
             state = TextStateEscape
-          } else if (b == '\n') {
-            newLine
           } else if (b != '\r') {
             text += b.toChar
           }
 
         case TextStateColor =>
           if (b == 'm') {
-            setColor
+            colorCode = setColor(color.result(), colorCode)
+            color.clear
             state = TextStateStream
           } else {
             color += b.toChar
@@ -145,28 +170,17 @@ class Text {
     }
 
     addFragment
+
+    if (lines.size > lineNum) {
+      lines(lineNum) = lines(lineNum).copy(fragments = fragments.result())
+    } else lines(lineNum) = Line(fragments.result(), List.empty)
+
+    botLine = Math.max(botLine, lineNum)
   }
 
-  private def addFragment : Unit = {
-    if (text.size > 0) {
-      lines(lines.size - 1) = lines.last :+ Fragment(text.result(), colorCode)
-      text.clear
-    }
-  }
+  private def setColor(s: String, colorCode: ColorCode) : ColorCode = {
 
-  private def newLine : Unit = {
-    addFragment
-    lines += EmptyLine
-  }
-
-  private def setColor : Unit = {
-    val s = color.result()
-    color.clear
-
-    if (s == "0") {
-      colorCode = DefaultColorCode
-      return
-    }
+    if (s == "0") return DefaultColorCode
 
     Try {
       var fg = colorCode.fg
@@ -204,10 +218,10 @@ class Text {
 
       ColorCode(fg, bg, bold)
     } match {
-      case Success(cc) => colorCode = cc
+      case Success(cc) => cc
       case Failure(e) =>
         log.error(s"error parsing color code $s", e)
-        colorCode = DefaultColorCode
+        DefaultColorCode
     }
   }
 }
@@ -221,8 +235,8 @@ class TextArea(val text: Text) extends JPanel {
   private var fontWidth = 0
   private var fontHeight = 0
   private var fontDescent = 0
-  private var wrapAt = 80
-  private var botLine = -1
+  private var wrapAt = 100
+  private var botLine : Long = -1
 
   setBackground(colorScheme.color(TelnetColorDefaultBg))
   setFocusable(false)
@@ -233,7 +247,7 @@ class TextArea(val text: Text) extends JPanel {
     repaint()
   }
 
-  def setBotLine(botLine: Int): Unit = {
+  def setBotLine(botLine: Long): Unit = {
     this.botLine = botLine
     repaint()
   }
@@ -246,7 +260,7 @@ class TextArea(val text: Text) extends JPanel {
   override def setFont(font: Font) : Unit = {
     super.setFont(font)
 
-    val bf = new BufferedImage(200,80,BufferedImage.TYPE_INT_RGB)
+    val bf = new BufferedImage(200, 80, BufferedImage.TYPE_INT_RGB)
     val bfg = bf.createGraphics
     val metrics = bfg.getFontMetrics(font)
 
@@ -263,8 +277,7 @@ class TextArea(val text: Text) extends JPanel {
 
     val height = g.getClipBounds.height - 5
     val numLines = Math.ceil(height.toDouble / fontHeight).toInt
-    val lineNum = if (botLine == -1) text.length else botLine
-    val linesToDraw = text.getWrapLines(numLines, wrapAt, lineNum)
+    val linesToDraw = text.getWrapLines(numLines, wrapAt, botLine)
 
     @tailrec
     def drawLine(fragments: List[Fragment], x: Int, y: Int): Unit = {
@@ -272,8 +285,6 @@ class TextArea(val text: Text) extends JPanel {
         case Nil =>
         case head :: xs =>
           val width = fontWidth*head.text.length
-
-          //println(x + " " + y + " " + head.colorCode + " " + fontHeight)
 
           if (head.colorCode.bg != TelnetColorDefaultBg) {
             g.setColor(head.colorCode.bgColor(colorScheme))
@@ -298,7 +309,7 @@ class TextArea(val text: Text) extends JPanel {
 class SplittableTextArea(text: Text) extends JSplitPane with MouseWheelListener {
   private val topTextArea = new TextArea(text)
   private val textArea = new TextArea(text)
-  private var scrollPos = 0
+  private var scrollPos : Long = 0
   private var scrollSpeed = 4
 
   setOrientation(JSplitPane.VERTICAL_SPLIT)

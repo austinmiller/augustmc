@@ -117,7 +117,7 @@ class Client private[script](profileConfig: ProfileConfig, client: ClientInterfa
     })
 
     Try {
-      future.get(500, TimeUnit.MILLISECONDS)
+      future.get(profileConfig.javaConfig.clientTimeout, TimeUnit.MILLISECONDS)
     } match {
       case Success(rv) => rv
       case Failure(e: TimeoutException) =>
@@ -129,7 +129,7 @@ class Client private[script](profileConfig: ProfileConfig, client: ClientInterfa
 
   override def init(profile: ProfileInterface): Unit = execute(() => client.init(profile))
   override def onConnect(): Unit = execute(() => client.onConnect())
-  override def handleLine(s: String): Unit = execute(() => client.handleLine(s))
+  override def handleLine(lineNum: Long, line: String): Boolean = execute(() => client.handleLine(lineNum, line))
   override def handleFragment(s: String): Unit = execute(() => client.handleFragment(s))
   override def onDisconnect(): Unit = execute(() => client.onDisconnect())
   override def handleGmcp(s: String): Unit = execute(() => client.handleGmcp(s))
