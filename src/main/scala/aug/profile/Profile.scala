@@ -1,12 +1,12 @@
 package aug.profile
 
-import java.util.concurrent.PriorityBlockingQueue
+import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 
 import aug.gui.{MainWindow, ProfilePanel}
 import aug.io.Telnet
 import aug.script.shared.ProfileInterface
-import aug.script.{OutOfTimeException, Script, ScriptLoader}
+import aug.script.{Client, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -47,6 +47,7 @@ case object ClientStart extends AbstractProfileEvent(0)
 case object ClientStop extends AbstractProfileEvent(0)
 
 case class UserCommand(data: String) extends AbstractProfileEvent(Int.MaxValue - 1)
+case class SendData(data: String) extends AbstractProfileEvent(Int.MaxValue - 1)
 
 case object CloseProfile extends AbstractProfileEvent(Int.MaxValue)
 
@@ -63,7 +64,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   profilePanel.addText("profile: " + profileConfig.name+"\n")
 
   private var telnet : Option[Telnet] = None
-  private var script : Option[Script] = None
+  private var client : Option[Client] = None
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
   private val threadQueue = new PriorityBlockingQueue[ProfileEvent]()
   private val running = new AtomicBoolean(true)
@@ -92,7 +93,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               slog.info(s"profile $name connected")
             }
 
-            script.foreach(_.onConnect())
+            client.foreach(_.onConnect())
 
           case TelnetError(data) =>
             slog.info(s"profile $name: telnet error: $data")
@@ -103,7 +104,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               slog.info(s"profile $name lost connection")
             }
 
-            script.foreach(_.onDisconnect())
+            client.foreach(_.onDisconnect())
 
           case TelnetRecv(data) =>
             profilePanel.addText(data)
@@ -112,7 +113,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case UserCommand(data) =>
             val exception = Try {
-              script.foreach(_.handleCommand(data))
+              client.foreach(_.handleCommand(data))
             } match {
               case Failure(e) => Some(e)
               case _ => None
@@ -123,7 +124,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             }
 
             exception.foreach(e => throw e)
-
 
           case CloseProfile =>
             telnet.foreach(_.close)
@@ -145,7 +145,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case ClientStart =>
             Try {
-              script match {
+              client match {
                 case Some(_) => throw new RuntimeException(s"profile $name failed to init client, already has a client")
                 case None => ScriptLoader.constructScript(profileConfig)
               }
@@ -154,7 +154,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 slog.error(f"profile $name: failed to init script: ${e.getMessage}")
                 log.error(f"profile $name: failed to init script", e)
               case Success(script) =>
-                this.script = Some(script)
+                this.client = Some(script)
                 Try {
                   script.init(this)
                 } match {
@@ -164,19 +164,30 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             }
 
           case ClientStop =>
-            script match {
+            client match {
               case Some(scr) =>
-                script = None
+                client = None
                 scr.shutdown()
               case None =>
                 slog.error(f"profile $name: no client to shutdown")
+            }
+
+          case SendData(cmds) =>
+            telnet match {
+              case Some(t) =>
+                cmds.split("\n").foreach { cmd =>
+                  t.send(cmd + "\n")
+                  profilePanel.addText(cmd + "\n")
+                }
+              case None =>
+                slog.info(s"profile $name: command ignored: $cmds")
             }
 
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")
         }
       } match {
-        case Failure(OutOfTimeException) =>
+        case Failure(TimeoutException) =>
           log.error(s"profile $name: script ran out of time to respond")
           slog.error(s"profile $name: script ran out of time to respond")
           clientRestart
@@ -211,17 +222,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     }
   }
 
-  override def send(cmds: String): Unit = {
-    telnet match {
-      case Some(t) =>
-        cmds.split("\n").foreach {cmd=>
-          t.send(cmd + "\n")
-          profilePanel.addText(cmd + "\n")
-        }
-      case None =>
-        slog.info(s"profile $name: command ignored:g $cmds")
-    }
-  }
+  /**
+    * <p>This should *only* be called by the client or by the event thread. </p>
+   */
+  override def send(cmds: String): Unit = offer(SendData(cmds))
 }
 
 object Profile {
