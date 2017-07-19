@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import aug.gui.SystemPanel
+import aug.util.Util
 
 class SystemLog(systemPanel: SystemPanel) {
 
@@ -18,8 +19,8 @@ class SystemLog(systemPanel: SystemPanel) {
 
   private def log(category: String, colorCode: String, msg: String, args: Object*) = {
     val m = String.format(msg, args)
-    val txt = "\n" + ColorUtils.colorCode(colorCode) + dateFormat.format(new Date) +
-      " " + category + ": " + ColorUtils.colorCode("0") + msg
+    val txt = "\n" + Util.colorCode(colorCode) + dateFormat.format(new Date) +
+      " " + category + ": " + Util.colorCode("0") + msg
     systemPanel.text.addText(txt)
     systemPanel.repaint()
   }

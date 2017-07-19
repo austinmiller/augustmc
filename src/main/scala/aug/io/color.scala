@@ -119,8 +119,3 @@ class ConfigurableColorScheme(colorSchemeConfig: ColorSchemeConfig) extends Colo
 object SidePanelColor extends Color(62, 67, 76)
 object BorderColor extends Color(85, 90, 92)
 object TransparentColor extends Color(0, 0, 0, 0)
-
-object ColorUtils {
-  def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
-  def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
-}

@@ -1,12 +1,12 @@
 package aug.profile
 
-import java.util.concurrent.{LinkedBlockingQueue, PriorityBlockingQueue}
+import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 
 import aug.gui.{MainWindow, ProfilePanel}
-import aug.io.{ColorUtils, SystemLog, Telnet}
-import aug.script.{OutOfTimeException, Script, ScriptLoader}
+import aug.io.Telnet
 import aug.script.shared.ProfileInterface
+import aug.script.{OutOfTimeException, Script, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -89,7 +89,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         event match {
           case TelnetConnect =>
             synchronized {
-              profilePanel.addText("\n" + ColorUtils.colorCode("0") + "--connected--\n")
+              profilePanel.addText("\n" + Util.colorCode("0") + "--connected--\n")
               slog.info(s"profile $name connected")
             }
 
@@ -100,7 +100,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case TelnetDisconnect =>
             synchronized {
-              profilePanel.addText("\n" + ColorUtils.colorCode("0") + "--disconnected--\n")
+              profilePanel.addText("\n" + Util.colorCode("0") + "--disconnected--\n")
               slog.info(s"profile $name lost connection")
             }
 

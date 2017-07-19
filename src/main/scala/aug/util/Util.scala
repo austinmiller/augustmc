@@ -1,6 +1,6 @@
 package aug.util
 
-import java.awt.EventQueue
+import java.awt.{Color, EventQueue}
 import java.io.{Closeable, File, FileOutputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
@@ -146,6 +146,8 @@ object Util {
 
   def removeColors(string: String): String = string.replaceAll("\u001B\\[.*?m", "")
 
+  def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
+  def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
 }
 
 case class TelnetColor(color: Int, bright: Boolean) {

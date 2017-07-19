@@ -9,8 +9,9 @@ import javax.swing._
 import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.plaf.ButtonUI
 
-import aug.io.{ColorUtils, ConfigurableColorScheme, DefaultColorScheme, TelnetColorBlack, TelnetColorBlue, TelnetColorCyan, TelnetColorDefaultBg, TelnetColorDefaultFg, TelnetColorGreen, TelnetColorMagenta, TelnetColorRed, TelnetColorWhite, TelnetColorYellow}
+import aug.io.{ConfigurableColorScheme, DefaultColorScheme, TelnetColorBlack, TelnetColorBlue, TelnetColorCyan, TelnetColorDefaultBg, TelnetColorDefaultFg, TelnetColorGreen, TelnetColorMagenta, TelnetColorRed, TelnetColorWhite, TelnetColorYellow}
 import aug.profile.ColorSchemeConfig
+import aug.util.Util
 
 import scala.collection.mutable
 
@@ -68,7 +69,7 @@ class ColorButton(val label: String, var color: Color, cscp: ColorSchemeConfigPa
     val x = (getWidth - fontWidth) / 2
     val y = fontHeight + ((getHeight - fontHeight) / 2) - fontDescent
 
-    g.drawString(ColorUtils.toHex(color), x, y)
+    g.drawString(Util.toHex(color), x, y)
   }
 
   private def getTextColor = {
@@ -331,26 +332,26 @@ class ColorSchemeConfigPanel(val settingsWindow: SettingsWindow) extends JPanel 
     val cs = settingsWindow.colorSchemes(selected)
 
     label match {
-      case "default FG" => settingsWindow.colorSchemes(selected) = cs.copy(defaultFg = ColorUtils.toHex(color))
-      case "default BG" => settingsWindow.colorSchemes(selected) = cs.copy(defaultBg = ColorUtils.toHex(color))
+      case "default FG" => settingsWindow.colorSchemes(selected) = cs.copy(defaultFg = Util.toHex(color))
+      case "default BG" => settingsWindow.colorSchemes(selected) = cs.copy(defaultBg = Util.toHex(color))
 
-      case "black" => settingsWindow.colorSchemes(selected) = cs.copy(black = ColorUtils.toHex(color))
-      case "red" => settingsWindow.colorSchemes(selected) = cs.copy(red = ColorUtils.toHex(color))
-      case "green" => settingsWindow.colorSchemes(selected) = cs.copy(green = ColorUtils.toHex(color))
-      case "yellow" => settingsWindow.colorSchemes(selected) = cs.copy(yellow = ColorUtils.toHex(color))
-      case "blue" => settingsWindow.colorSchemes(selected) = cs.copy(blue = ColorUtils.toHex(color))
-      case "magenta" => settingsWindow.colorSchemes(selected) = cs.copy(magenta = ColorUtils.toHex(color))
-      case "cyan" => settingsWindow.colorSchemes(selected) = cs.copy(cyan = ColorUtils.toHex(color))
-      case "white" => settingsWindow.colorSchemes(selected) = cs.copy(white = ColorUtils.toHex(color))
+      case "black" => settingsWindow.colorSchemes(selected) = cs.copy(black = Util.toHex(color))
+      case "red" => settingsWindow.colorSchemes(selected) = cs.copy(red = Util.toHex(color))
+      case "green" => settingsWindow.colorSchemes(selected) = cs.copy(green = Util.toHex(color))
+      case "yellow" => settingsWindow.colorSchemes(selected) = cs.copy(yellow = Util.toHex(color))
+      case "blue" => settingsWindow.colorSchemes(selected) = cs.copy(blue = Util.toHex(color))
+      case "magenta" => settingsWindow.colorSchemes(selected) = cs.copy(magenta = Util.toHex(color))
+      case "cyan" => settingsWindow.colorSchemes(selected) = cs.copy(cyan = Util.toHex(color))
+      case "white" => settingsWindow.colorSchemes(selected) = cs.copy(white = Util.toHex(color))
 
-      case "bold black" => settingsWindow.colorSchemes(selected) = cs.copy(boldBlack = ColorUtils.toHex(color))
-      case "bold red" => settingsWindow.colorSchemes(selected) = cs.copy(boldRed = ColorUtils.toHex(color))
-      case "bold green" => settingsWindow.colorSchemes(selected) = cs.copy(boldGreen = ColorUtils.toHex(color))
-      case "bold yellow" => settingsWindow.colorSchemes(selected) = cs.copy(boldYellow = ColorUtils.toHex(color))
-      case "bold blue" => settingsWindow.colorSchemes(selected) = cs.copy(boldBlue = ColorUtils.toHex(color))
-      case "bold magenta" => settingsWindow.colorSchemes(selected) = cs.copy(boldMagenta = ColorUtils.toHex(color))
-      case "bold cyan" => settingsWindow.colorSchemes(selected) = cs.copy(boldCyan = ColorUtils.toHex(color))
-      case "bold white" => settingsWindow.colorSchemes(selected) = cs.copy(boldWhite = ColorUtils.toHex(color))
+      case "bold black" => settingsWindow.colorSchemes(selected) = cs.copy(boldBlack = Util.toHex(color))
+      case "bold red" => settingsWindow.colorSchemes(selected) = cs.copy(boldRed = Util.toHex(color))
+      case "bold green" => settingsWindow.colorSchemes(selected) = cs.copy(boldGreen = Util.toHex(color))
+      case "bold yellow" => settingsWindow.colorSchemes(selected) = cs.copy(boldYellow = Util.toHex(color))
+      case "bold blue" => settingsWindow.colorSchemes(selected) = cs.copy(boldBlue = Util.toHex(color))
+      case "bold magenta" => settingsWindow.colorSchemes(selected) = cs.copy(boldMagenta = Util.toHex(color))
+      case "bold cyan" => settingsWindow.colorSchemes(selected) = cs.copy(boldCyan = Util.toHex(color))
+      case "bold white" => settingsWindow.colorSchemes(selected) = cs.copy(boldWhite = Util.toHex(color))
 
       case _ => throw new IOException("oh shit, no color found")
     }
