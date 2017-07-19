@@ -14,24 +14,24 @@ import org.slf4j.LoggerFactory
 import scala.util.{Failure, Success, Try}
 
 trait ProfileEventListener {
-  def event(event: ProfileEvent, data: Option[String])
+  def event(event: ProfileEventType, data: Option[String])
 }
 
-sealed trait ProfileEvent
+sealed trait ProfileEventType
 
-case object TelnetConnect extends ProfileEvent
-case object TelnetError extends ProfileEvent
-case object TelnetDisconnect extends ProfileEvent
-case object TelnetRecv extends ProfileEvent
-case object TelnetGMCP extends ProfileEvent
+case object TelnetConnect extends ProfileEventType
+case object TelnetError extends ProfileEventType
+case object TelnetDisconnect extends ProfileEventType
+case object TelnetRecv extends ProfileEventType
+case object TelnetGMCP extends ProfileEventType
 
-case object ScriptInit extends ProfileEvent
+case object ScriptInit extends ProfileEventType
 
-case object UserCommand extends ProfileEvent
+case object UserCommand extends ProfileEventType
 
-case object CloseProfile extends ProfileEvent
+case object CloseProfile extends ProfileEventType
 
-case class ProfileEventData(profileEvent: ProfileEvent, data: Option[String] = None)
+case class ProfileEvent(profileEvent: ProfileEventType, data: Option[String] = None)
 
 class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends ProfileEventListener
   with ProfileInterface
@@ -50,7 +50,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var telnet : Option[Telnet] = None
   private var script : Option[Script] = None
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
-  private val threadQueue = new LinkedBlockingQueue[ProfileEventData]()
+  private val threadQueue = new LinkedBlockingQueue[ProfileEvent]()
   private val running = new AtomicBoolean(true)
   private val swallowNextCommand = new AtomicBoolean(false)
   thread.start()
@@ -143,15 +143,15 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     }
   }
 
-  override def event(event: ProfileEvent, data: Option[String]): Unit = {
-    val ped = new ProfileEventData(event, data)
+  override def event(event: ProfileEventType, data: Option[String]): Unit = {
+    val ped = new ProfileEvent(event, data)
     offer(ped)
   }
 
 
-  private def offer(pe: ProfileEvent): Unit = offer(ProfileEventData(pe))
+  private def offer(pe: ProfileEventType): Unit = offer(ProfileEvent(pe))
 
-  private def offer(ped: ProfileEventData): Unit = {
+  private def offer(ped: ProfileEvent): Unit = {
     if (!threadQueue.offer(ped)) {
       slog.error(f"profile $name failed to offer event $ped")
       log.error(f"profile $name failed to offer event $ped")
@@ -170,7 +170,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         log.error(f"profile $name failed to init script", e)
       case Success(script) =>
         this.script = Some(script)
-        offer(ProfileEventData(ScriptInit))
+        offer(ProfileEvent(ScriptInit))
     }
   }
 

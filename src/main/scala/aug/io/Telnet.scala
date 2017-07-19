@@ -112,7 +112,7 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
     Array(TelnetIac.code,command.code,option.code)
   }
 
-  private def dispatch(event: ProfileEvent, data: Option[String]): Unit = {
+  private def dispatch(event: ProfileEventType, data: Option[String]): Unit = {
     listeners foreach { _.event(event,data)}
   }
 
