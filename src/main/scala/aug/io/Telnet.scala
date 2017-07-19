@@ -77,30 +77,30 @@ object Telnet {
   val TELQUAL_SEND	= 1;
 }
 
-class Telnet(val url: String, val port: Int) extends AbstractConnection(new InetSocketAddress(url,port)) {
+class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
+  AbstractConnection(new InetSocketAddress(profileConfig.telnetConfig.host,
+    profileConfig.telnetConfig.port)) {
   import Telnet.log
 
-  val inflater = new Inflater()
-  val listeners = new scala.collection.mutable.ListBuffer[ProfileEventListener]
-  val inflateBuffer = ByteBuffer.allocate(1<<16)
-  val postBuffer = ByteBuffer.allocate(1<<16)
+  val url = profileConfig.telnetConfig.host
+  val port = profileConfig.telnetConfig.port
 
-  var compressed = false
-  var state : TelnetState = Stream
-  var command : TelnetCommand = TelnetUnknown(0)
-  var option : TelnetOption = new OptionUnknown(0)
-  var subMessage = new StringBuilder
-  var zipinput : Array[Byte] = null
-  var rawBuffer = ByteBuffer.allocate(1<<16)
-  var marker = 0
+  private val inflater = new Inflater()
+  private val inflateBuffer = ByteBuffer.allocate(1<<16)
+  private val postBuffer = ByteBuffer.allocate(1<<16)
 
-  def addListener(listener: ProfileEventListener) : Unit = synchronized {
-    listeners += listener
-  }
+  private var compressed = false
+  private var state : TelnetState = Stream
+  private var command : TelnetCommand = TelnetUnknown(0)
+  private var option : TelnetOption = new OptionUnknown(0)
+  private var subMessage = new StringBuilder
+  private var zipinput : Array[Byte] = null
+  private var rawBuffer = ByteBuffer.allocate(1<<16)
+  private var marker = 0
 
   override def close = {
     super.close
-    dispatch(TelnetDisconnect,None)
+    profile.offer(TelnetDisconnect)
   }
 
   override def connect = {
@@ -112,13 +112,9 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
     Array(TelnetIac.code,command.code,option.code)
   }
 
-  private def dispatch(event: ProfileEventType, data: Option[String]): Unit = {
-    listeners foreach { _.event(event,data)}
-  }
-
   override def finishConnect : Unit = {
     super.finishConnect
-    if(!isClosed) dispatch(TelnetConnect,None)
+    if(!isClosed) profile.offer(TelnetConnect)
   }
 
   private def handleByte(c: Byte) : Unit = {
@@ -216,8 +212,7 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
           send(OptionType, Telnet.TELQUAL_IS+"augustMC")
         }
       case OptionMccp2 => startCompression()
-      case OptionGmcp =>
-        dispatch(TelnetGMCP,Some(sm))
+      case OptionGmcp => profile.offer(TelnetGMCP(sm))
       case _ =>
     }
   }
@@ -251,7 +246,7 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
 
     val msg = new String(postBuffer.array, 0, postBuffer.position)
 
-    dispatch(TelnetRecv,Some(msg))
+    profile.offer(TelnetRecv(msg))
     postBuffer.position(0)
   }
 
@@ -309,6 +304,6 @@ class Telnet(val url: String, val port: Int) extends AbstractConnection(new Inet
   }
 
   override def error(msg: String): Unit = {
-    dispatch(TelnetError, Some(msg))
+    profile.offer(TelnetError(msg))
   }
 }

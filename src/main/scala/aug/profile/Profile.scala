@@ -1,10 +1,10 @@
 package aug.profile
 
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{LinkedBlockingQueue, PriorityBlockingQueue}
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 
 import aug.gui.{MainWindow, ProfilePanel}
-import aug.io.{ColorUtils, Telnet}
+import aug.io.{ColorUtils, SystemLog, Telnet}
 import aug.script.{OutOfTimeException, Script, ScriptLoader}
 import aug.script.shared.ProfileInterface
 import aug.util.Util
@@ -13,28 +13,44 @@ import org.slf4j.LoggerFactory
 
 import scala.util.{Failure, Success, Try}
 
-trait ProfileEventListener {
-  def event(event: ProfileEventType, data: Option[String])
+sealed trait ProfileEvent extends Comparable[ProfileEvent] {
+  def priority : Int
+  def subPriority : Long
+
+  override def compareTo(other: ProfileEvent) : Int = {
+    if (priority == other.priority) {
+      val diff = subPriority - other.subPriority
+      if (diff > 0) 1 else if (diff == 0) 0 else -1
+    } else priority - other.priority
+  }
 }
 
-sealed trait ProfileEventType
+abstract class AbstractProfileEvent(major: Int, minor: Long = EventId.nextId) extends ProfileEvent {
+  override def priority: Int = major
+  override def subPriority: Long = minor
+}
 
-case object TelnetConnect extends ProfileEventType
-case object TelnetError extends ProfileEventType
-case object TelnetDisconnect extends ProfileEventType
-case object TelnetRecv extends ProfileEventType
-case object TelnetGMCP extends ProfileEventType
+private[profile] object EventId {
+  private val next = new AtomicLong(Long.MinValue)
+  def nextId = next.incrementAndGet()
+}
 
-case object ScriptInit extends ProfileEventType
+case object TelnetConnect extends AbstractProfileEvent(Int.MaxValue - 1)
+case class TelnetError(data: String) extends AbstractProfileEvent(0)
+case object TelnetDisconnect extends AbstractProfileEvent(Int.MaxValue - 1)
+case class TelnetRecv(data: String) extends AbstractProfileEvent(0)
+case class TelnetGMCP(data: String) extends AbstractProfileEvent(0)
 
-case object UserCommand extends ProfileEventType
+case object ProfileConnect extends AbstractProfileEvent(0)
+case object ProfileDisconnect extends AbstractProfileEvent(0)
+case object ClientStart extends AbstractProfileEvent(0)
+case object ClientStop extends AbstractProfileEvent(0)
 
-case object CloseProfile extends ProfileEventType
+case class UserCommand(data: String) extends AbstractProfileEvent(Int.MaxValue - 1)
 
-case class ProfileEvent(profileEvent: ProfileEventType, data: Option[String] = None)
+case object CloseProfile extends AbstractProfileEvent(Int.MaxValue)
 
-class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends ProfileEventListener
-  with ProfileInterface
+class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends ProfileInterface
   with AutoCloseable {
   import Profile.log
   import Util.Implicits._
@@ -50,40 +66,27 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var telnet : Option[Telnet] = None
   private var script : Option[Script] = None
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
-  private val threadQueue = new LinkedBlockingQueue[ProfileEvent]()
+  private val threadQueue = new PriorityBlockingQueue[ProfileEvent]()
   private val running = new AtomicBoolean(true)
   private val swallowNextCommand = new AtomicBoolean(false)
   thread.start()
 
   def setProfileConfig(profileConfig: ProfileConfig) = synchronized(this.profileConfig = profileConfig)
 
-  def connect = synchronized {
-    telnet match {
-      case Some(_) => slog.error("profile %s already connected", name)
-      case None =>
-        telnet = Some(new Telnet(profileConfig.telnetConfig.host, profileConfig.telnetConfig.port))
-        telnet.foreach(_.addListener(this))
-        Util.invokeLater(() => (telnet.foreach(_.connect)))
-        slog.info(f"profile $name starting connection to ${profileConfig.telnetConfig.host}:" +
-          f"${profileConfig.telnetConfig.port}")
-    }
+  def connect = offer(ProfileConnect)
+
+  def reconnect = {
+    offer(ProfileDisconnect)
+    offer(ProfileConnect)
   }
 
-  def reconnect = synchronized {
-    disconnect
-    connect
-  }
-
-  def disconnect = synchronized {
-    telnet.foreach(_.close)
-    telnet = None
-  }
+  def disconnect = offer(ProfileDisconnect)
 
   private def threadLoop() : Unit = {
     while(running.get()) {
       Try {
-        val ped = threadQueue.take()
-        ped.profileEvent match {
+        val event = threadQueue.take()
+        event match {
           case TelnetConnect =>
             synchronized {
               profilePanel.addText("\n" + ColorUtils.colorCode("0") + "--connected--\n")
@@ -92,8 +95,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
             script.foreach(_.onConnect())
 
-          case TelnetError =>
-            slog.info(s"profile $name: telnet error")
+          case TelnetError(data) =>
+            slog.info(s"profile $name: telnet error: $data")
 
           case TelnetDisconnect =>
             synchronized {
@@ -103,38 +106,81 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
             script.foreach(_.onDisconnect())
 
-          case TelnetRecv =>
-            ped.data.foreach(profilePanel.addText)
+          case TelnetRecv(data) =>
+            profilePanel.addText(data)
 
-          case TelnetGMCP =>
+          case TelnetGMCP(data) =>
 
-          case ScriptInit =>
-            script.foreach(_.init(this))
-
-          case UserCommand =>
-            ped.data.foreach { data =>
-
-              val exception = Try {
-                script.foreach(_.handleCommand(data))
-              } match {
-                case Failure(e) => Some(e)
-                case _ => None
-              }
-
-              if (!swallowNextCommand.compareAndSet(true, false)) {
-                send(data)
-              }
-
-              exception.foreach(e => throw e)
+          case UserCommand(data) =>
+            val exception = Try {
+              script.foreach(_.handleCommand(data))
+            } match {
+              case Failure(e) => Some(e)
+              case _ => None
             }
 
+            if (!swallowNextCommand.compareAndSet(true, false)) {
+              send(data)
+            }
+
+            exception.foreach(e => throw e)
+
+
           case CloseProfile =>
+            telnet.foreach(_.close)
+            mainWindow.tabbedPane.remove(profilePanel)
+
+          case ProfileConnect =>
+            telnet match {
+              case Some(_) => slog.error("profile %s already connected", name)
+              case None =>
+                telnet = Some(new Telnet(this, profileConfig))
+                slog.info(f"profile $name starting connection to ${profileConfig.telnetConfig.host}:" +
+                  f"${profileConfig.telnetConfig.port}")
+                telnet.foreach(_.connect)
+            }
+
+          case ProfileDisconnect =>
+            telnet.foreach(_.close)
+            telnet = None
+
+          case ClientStart =>
+            Try {
+              script match {
+                case Some(_) => throw new RuntimeException(s"profile $name failed to init client, already has a client")
+                case None => ScriptLoader.constructScript(profileConfig)
+              }
+            } match {
+              case Failure(e) =>
+                slog.error(f"profile $name: failed to init script: ${e.getMessage}")
+                log.error(f"profile $name: failed to init script", e)
+              case Success(script) =>
+                this.script = Some(script)
+                Try {
+                  script.init(this)
+                } match {
+                  case Failure(e) => slog.error(s"profile $name: failed to init client, won't autostart, ${e.getMessage}")
+                  case Success(_) => slog.info(s"profile $name: started client successfully")
+                }
+            }
+
+          case ClientStop =>
+            script match {
+              case Some(scr) =>
+                script = None
+                scr.shutdown()
+              case None =>
+                slog.error(f"profile $name: no client to shutdown")
+            }
+
+          case unhandledEvent =>
+            log.error(s"unhandled event $unhandledEvent")
         }
       } match {
         case Failure(OutOfTimeException) =>
           log.error(s"profile $name: script ran out of time to respond")
           slog.error(s"profile $name: script ran out of time to respond")
-          scriptRestart
+          clientRestart
         case Failure(e) =>
           log.error("event handling failure", e)
           slog.error(f"event handling failure: ${e.getMessage}")
@@ -143,51 +189,20 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     }
   }
 
-  override def event(event: ProfileEventType, data: Option[String]): Unit = {
-    val ped = new ProfileEvent(event, data)
-    offer(ped)
-  }
-
-
-  private def offer(pe: ProfileEventType): Unit = offer(ProfileEvent(pe))
-
-  private def offer(ped: ProfileEvent): Unit = {
-    if (!threadQueue.offer(ped)) {
-      slog.error(f"profile $name failed to offer event $ped")
-      log.error(f"profile $name failed to offer event $ped")
+  def offer(event: ProfileEvent): Unit = {
+    if (!threadQueue.offer(event)) {
+      slog.error(f"profile $name failed to offer event $event")
+      log.error(f"profile $name failed to offer event $event")
     }
   }
 
-  def scriptInit = synchronized {
-    Try {
-      script match {
-        case Some(_) => throw new RuntimeException(s"profile $name failed to init script, already has a script")
-        case None => ScriptLoader.constructScript(profileConfig)
-      }
-    } match {
-      case Failure(e) =>
-        slog.error(f"profile $name failed to init script: ${e.getMessage}")
-        log.error(f"profile $name failed to init script", e)
-      case Success(script) =>
-        this.script = Some(script)
-        offer(ProfileEvent(ScriptInit))
-    }
-  }
+  def clientStart = offer(ClientStart)
 
-  def scriptShutdown = synchronized {
-    script match {
-      case Some(scr) =>
-        script = None
-        scr.shutdown()
-      case None =>
-        slog.error(f"profile $name no script to shutdown")
-        log.error(f"profile $name no script to shutdown")
-    }
-  }
+  def clientStop = offer(ClientStop)
 
-  def scriptRestart = synchronized {
-    scriptShutdown
-    scriptInit
+  def clientRestart = {
+    offer(ClientStart)
+    offer(ClientStop)
   }
 
   override def close(): Unit = {
@@ -195,10 +210,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       offer(CloseProfile)
       thread.join(1000)
     }
-
-    disconnect
-
-    mainWindow.tabbedPane.remove(profilePanel)
   }
 
   override def send(cmds: String): Unit = {
@@ -209,7 +220,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           profilePanel.addText(cmd + "\n")
         }
       case None =>
-        slog.info(s"profile $name: command ignored: $cmds")
+        slog.info(s"profile $name: command ignored:g $cmds")
     }
   }
 }

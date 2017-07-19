@@ -43,7 +43,7 @@ class CommandLine(profile: Profile) extends JTextArea with KeyListener {
     if(history(0) != msg) history.push(msg)
     historyIndex = -1
 
-    profile.event(UserCommand, Some(msg))
+    profile.offer(UserCommand(msg))
   }
 
   override def keyTyped(e: KeyEvent): Unit = {}
