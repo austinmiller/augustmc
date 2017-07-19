@@ -62,7 +62,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   profilePanel.addText("profile: " + profileConfig.name+"\n")
 
-  @volatile
   private var telnet : Option[Telnet] = None
   private var script : Option[Script] = None
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
