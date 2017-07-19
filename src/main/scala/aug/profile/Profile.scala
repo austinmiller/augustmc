@@ -123,6 +123,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case CloseProfile =>
             telnet.foreach(_.close)
+            client.foreach(_.shutdown)
             mainWindow.tabbedPane.remove(profilePanel)
 
           case ProfileConnect =>
