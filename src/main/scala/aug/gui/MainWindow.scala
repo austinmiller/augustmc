@@ -9,6 +9,7 @@ import javax.swing.event.{MenuEvent, MenuListener}
 import aug.gui.settings.SettingsWindow
 import aug.io.{ConnectionManager, SystemLog, TransparentColor}
 import aug.profile.{ConfigManager, Profile}
+import aug.util.Util
 import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -19,7 +20,7 @@ class MainWindow extends JFrame {
   val version = "0.1.dev"
   val systemPanel = new SystemPanel(this)
   val slog = new SystemLog(systemPanel)
-  slog.raw("August MC "+version)
+  slog.raw(Util.fullName)
 
   val tabbedPane = new TabbedPane(this)
   tabbedPane.addTab("system", systemPanel)
@@ -30,7 +31,7 @@ class MainWindow extends JFrame {
 
   add(tabbedPane)
 
-  setTitle("August MC")
+  setTitle(Util.fullName)
   setSize(1000,900)
 
   private val profileMenu: JMenu = new JMenu("profile")

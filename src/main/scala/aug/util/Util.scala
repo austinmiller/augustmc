@@ -108,7 +108,7 @@ object Util {
   val log = Logger(LoggerFactory.getLogger(Util.getClass))
 
   val name = "August MC"
-  val major = 2016
+  val major = 2017
   val minor = 1
 
   val colorEscapeCode = "\u001B"
