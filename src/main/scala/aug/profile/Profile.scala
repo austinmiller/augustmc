@@ -62,8 +62,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   val name = profileConfig.name
   mainWindow.tabbedPane.addProfile(name, profilePanel)
 
-  addLine("profile: " + profileConfig.name)
-
   private var telnet : Option[Telnet] = None
   private var client : Option[Client] = None
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
@@ -71,6 +69,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private val running = new AtomicBoolean(true)
   private var lineNum: Long = 0
   private var fragment: String = ""
+
+  addLine("profile: " + profileConfig.name)
 
   thread.start()
 
