@@ -133,5 +133,5 @@ class Client private[script](profileConfig: ProfileConfig, client: ClientInterfa
   override def handleFragment(s: String): Unit = execute(() => client.handleFragment(s))
   override def onDisconnect(): Unit = execute(() => client.onDisconnect())
   override def handleGmcp(s: String): Unit = execute(() => client.handleGmcp(s))
-  override def handleCommand(s: String): Unit = execute(() => client.handleCommand(s))
+  override def handleCommand(s: String): Boolean = execute(() => client.handleCommand(s))
 }

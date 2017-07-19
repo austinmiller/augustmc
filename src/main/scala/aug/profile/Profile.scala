@@ -112,18 +112,14 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case TelnetGMCP(data) =>
 
           case UserCommand(data) =>
-            val exception = Try {
-              client.foreach(_.handleCommand(data))
-            } match {
-              case Failure(e) => Some(e)
-              case _ => None
-            }
+            client match {
+              case Some(client) =>
+                if(!client.handleCommand(data)) {
+                  sendNow(data)
+                }
 
-            if (!swallowNextCommand.compareAndSet(true, false)) {
-              send(data)
+              case None => sendNow(data)
             }
-
-            exception.foreach(e => throw e)
 
           case CloseProfile =>
             telnet.foreach(_.close)
@@ -158,7 +154,9 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 Try {
                   script.init(this)
                 } match {
-                  case Failure(e) => slog.error(s"profile $name: failed to init client, won't autostart, ${e.getMessage}")
+                  case Failure(e) =>
+                    slog.error(s"profile $name: failed to init client, won't autostart, ${e.getMessage}")
+                    offer(ClientStop)
                   case Success(_) => slog.info(s"profile $name: started client successfully")
                 }
             }
@@ -172,16 +170,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 slog.error(f"profile $name: no client to shutdown")
             }
 
-          case SendData(cmds) =>
-            telnet match {
-              case Some(t) =>
-                cmds.split("\n").foreach { cmd =>
-                  t.send(cmd + "\n")
-                  profilePanel.addText(cmd + "\n")
-                }
-              case None =>
-                slog.info(s"profile $name: command ignored: $cmds")
-            }
+          case SendData(cmds) => sendNow(cmds)
 
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")
@@ -223,7 +212,25 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   }
 
   /**
-    * <p>This should *only* be called by the client or by the event thread. </p>
+    * <p>Send text now, without using event loop.  This should only be called by the
+    * event thread!</p>
+    * @param cmds
+    */
+  private def sendNow(cmds: String) : Unit = {
+    telnet match {
+      case Some(telnet) =>
+        cmds.split("\n").foreach { cmd =>
+          telnet.send(cmd + "\n")
+          profilePanel.addText(cmd + "\n")
+        }
+
+      case None => slog.info(s"profile $name: command ignored: $cmds")
+    }
+
+  }
+
+  /**
+    * <p>This should *only* be called by the client. </p>
    */
   override def send(cmds: String): Unit = offer(SendData(cmds))
 }
