@@ -50,7 +50,125 @@ class TelnetConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
   add(hostPanel, c)
 }
 
-class JavaConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel
+class ClasspathPanel extends JPanel {
+  val etchedBorder = BorderFactory.createEtchedBorder()
+  setBorder(BorderFactory.createTitledBorder(etchedBorder, "classpath"))
+  val springLayout = new SpringLayout
+  setLayout(new GridBagLayout)
+
+  val jlist = new JList[String]()
+  jlist.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
+  jlist.setLayoutOrientation(JList.VERTICAL)
+  val listScroller = new JScrollPane(jlist)
+
+  val addButton = new JButton("add")
+  val deleteButton = new JButton("delete")
+
+  val c = new GridBagConstraints()
+  c.anchor = GridBagConstraints.WEST
+  c.fill = GridBagConstraints.BOTH
+  c.weightx = 100
+  c.weighty = 100
+  c.insets = new Insets(10, 10, 5, 10)
+  c.gridwidth = 3
+  c.ipadx = 20
+  c.gridx = 0
+  c.gridy = 0
+  c.weightx = 80
+
+  add(listScroller, c)
+
+  c.anchor = GridBagConstraints.EAST
+  c.fill = GridBagConstraints.NONE
+  c.gridwidth = 1
+  c.weightx = 100
+  c.weighty = 1
+  c.insets = new Insets(0, 0, 0, 10)
+  c.gridy = 1
+
+  c.gridx = 0
+  add(new JPanel, c)
+
+  c.weightx = 1
+  c.gridx = 1
+  c.insets = new Insets(0, 0, 0, 5)
+  add(deleteButton, c)
+
+  c.gridx = 2
+  c.insets = new Insets(0, 0, 0, 10)
+  add(addButton, c)
+}
+
+class JavaOptionsPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
+  setLayout(new GridBagLayout())
+  val modeComboBox = new JComboBox[String](Array("disabled", "enabled", "autostart"))
+  val timeoutLabel = new JLabel("timeout: ")
+  val timeoutText = new RegexTextField("^[1-9]{1}[0-9]{0,4}$", 5, profileConfigPanel.setDirty)
+
+  val c = new GridBagConstraints()
+  c.anchor = GridBagConstraints.WEST
+  c.weightx = 1
+  c.gridx = 0
+  c.gridy = 0
+  add(modeComboBox, c)
+
+  c.gridx = 1
+  c.fill = GridBagConstraints.HORIZONTAL
+  c.weightx = 100
+  add(new JPanel, c)
+
+  c.gridx = 2
+  c.weightx = 1
+  c.fill = GridBagConstraints.NONE
+  add(timeoutLabel, c)
+  c.gridx = 3
+  add(timeoutText, c)
+
+}
+
+class CpFileChooserDialog(settingsWindow: SettingsWindow) extends
+  JDialog(settingsWindow, "Classpath Chooser", Dialog.ModalityType.DOCUMENT_MODAL) {
+  
+}
+
+class JavaConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
+
+  setLayout(new GridBagLayout)
+  val c = new GridBagConstraints()
+
+  val toprow = new JavaOptionsPanel(profileConfigPanel)
+
+  val mainClassPanel = new JPanel()
+  val etchedBorder = BorderFactory.createEtchedBorder()
+  mainClassPanel.setBorder(BorderFactory.createTitledBorder(etchedBorder, "main class"))
+  mainClassPanel.setLayout(new GridBagLayout)
+  c.fill = GridBagConstraints.HORIZONTAL
+  c.insets = new Insets(0, 10, 0, 10)
+  c.weightx = 100
+  val mainClassField = new RegexTextField("^.{1,300}$", 30, profileConfigPanel.setDirty)
+  mainClassPanel.add(mainClassField, c)
+
+  val classpathPanel = new ClasspathPanel
+
+  c.anchor = GridBagConstraints.NORTH
+  c.insets = new Insets(0, 0, 0, 0)
+  c.weightx = 1
+  c.weighty = 1
+  c.gridx = 0
+  c.gridy = 0
+
+  setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
+
+  add(toprow, c)
+
+  c.gridy = 1
+  add(mainClassPanel, c)
+
+  c.fill = GridBagConstraints.BOTH
+  c.gridy = 2
+  c.weighty = 400
+  add(classpathPanel, c)
+}
 
 class UIConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel
 
