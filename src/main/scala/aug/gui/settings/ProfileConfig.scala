@@ -31,12 +31,23 @@ class HostPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
 }
 
 class TelnetConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
-  setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
+  setLayout(new GridBagLayout)
+
+  println(getComponentOrientation.isHorizontal)
+
+  val c = new GridBagConstraints()
+
+  c.anchor = GridBagConstraints.NORTH
+  c.fill = GridBagConstraints.HORIZONTAL
+  c.weightx = 1
+  c.weighty = 1
+  c.gridx = 0
+  c.gridy = 0
 
   setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
   val hostPanel = new HostPanel(profileConfigPanel)
 
-  add(hostPanel)
+  add(hostPanel, c)
 }
 
 class JavaConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel
