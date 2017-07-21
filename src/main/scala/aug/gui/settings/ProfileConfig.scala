@@ -37,8 +37,6 @@ class HostPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
 class TelnetConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
   setLayout(new GridBagLayout)
 
-  println(getComponentOrientation.isHorizontal)
-
   val c = new GridBagConstraints()
 
   c.anchor = GridBagConstraints.NORTH

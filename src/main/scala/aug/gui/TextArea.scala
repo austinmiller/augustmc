@@ -302,7 +302,6 @@ class TextArea(val text: Text) extends JPanel {
       case (line, index) => drawLine(line.fragments, 5, height - index * fontHeight)
     }
 
-//    println("took "+(System.currentTimeMillis() - ts) + " millis")
   }
 }
 
