@@ -1,8 +1,10 @@
 name := "aug"
 
-version := "1.0"
-
-scalaVersion := "2.11.8"
+lazy val commonSettings = Seq(
+  organization := "aug",
+  version := "2017.1",
+  scalaVersion := "2.11.8"
+)
 
 unmanagedSourceDirectories in Compile += baseDirectory.value / "darcula/src"
 
@@ -33,3 +35,7 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 
 // for apple toolkit and ui
 libraryDependencies += "mrj" % "MRJToolkitStubs" % "1.0"
+
+lazy val root = (project in file(".")).dependsOn(shared).settings(commonSettings)
+lazy val shared = (project in file("shared")).settings(commonSettings)
+
