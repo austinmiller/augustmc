@@ -2,12 +2,16 @@ package aug.gui.settings
 
 import java.awt.event.{ActionEvent, ActionListener, KeyEvent, KeyListener}
 import java.awt._
+import java.io.{File, FilenameFilter}
 import javax.swing._
 import javax.swing.event.{DocumentEvent, DocumentListener}
+import javax.swing.filechooser.{FileFilter, FileSystemView}
 
-import aug.profile.{ProfileConfig, TelnetConfig}
+import aug.gui.OsTools
+import aug.profile.{JavaConfig, ProfileConfig, TelnetConfig}
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 class HostPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
@@ -50,18 +54,21 @@ class TelnetConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
   add(hostPanel, c)
 }
 
-class ClasspathPanel extends JPanel {
+class ClasspathPanel(settingsWindow: SettingsWindow, profileConfigPanel: ProfileConfigPanel) extends JPanel {
   val etchedBorder = BorderFactory.createEtchedBorder()
   setBorder(BorderFactory.createTitledBorder(etchedBorder, "classpath"))
   val springLayout = new SpringLayout
   setLayout(new GridBagLayout)
 
   val jlist = new JList[String]()
+  val model = new DefaultListModel[String]()
+  jlist.setModel(model)
   jlist.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
   jlist.setLayoutOrientation(JList.VERTICAL)
   val listScroller = new JScrollPane(jlist)
 
-  val addButton = new JButton("add")
+  val addDirButton = new JButton("add directory")
+  val addJarButton = new JButton("add jar")
   val deleteButton = new JButton("delete")
 
   val c = new GridBagConstraints()
@@ -70,7 +77,7 @@ class ClasspathPanel extends JPanel {
   c.weightx = 100
   c.weighty = 100
   c.insets = new Insets(10, 10, 5, 10)
-  c.gridwidth = 3
+  c.gridwidth = 4
   c.ipadx = 20
   c.gridx = 0
   c.gridy = 0
@@ -95,8 +102,70 @@ class ClasspathPanel extends JPanel {
   add(deleteButton, c)
 
   c.gridx = 2
+  c.insets = new Insets(0, 0, 0, 5)
+  add(addJarButton, c)
+
+
+  c.gridx = 3
   c.insets = new Insets(0, 0, 0, 10)
-  add(addButton, c)
+  add(addDirButton, c)
+
+  private def addFile(file: File) = {
+    val path = file.getAbsolutePath
+    if(!model.contains(path)) {
+      model.addElement(path)
+      profileConfigPanel.setDirty()
+    }
+  }
+
+  deleteButton.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = {
+      jlist.getSelectedValuesList.toArray.foreach{s => model.removeElement(s)}
+      profileConfigPanel.setDirty()
+    }
+  })
+
+  addDirButton.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = {
+      if (OsTools.isMac) {
+        System.setProperty("apple.awt.fileDialogForDirectories", "true")
+        val fd = new FileDialog(settingsWindow, "Choose a file", FileDialog.LOAD)
+        fd.setMultipleMode(true)
+        fd.setVisible(true)
+        addFile(new File(fd.getDirectory, fd.getFile))
+        System.setProperty("apple.awt.fileDialogForDirectories", "false")
+      } else {
+        val jfc = new JFileChooser(FileSystemView.getFileSystemView().getHomeDirectory())
+        jfc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY)
+        if(jfc.showOpenDialog(settingsWindow) == JFileChooser.APPROVE_OPTION) {
+          addFile(jfc.getSelectedFile)
+        }
+      }
+    }
+  })
+
+  addJarButton.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = {
+      if (OsTools.isMac) {
+        val fd = new FileDialog(settingsWindow, "Choose a file", FileDialog.LOAD)
+        fd.setMultipleMode(true)
+        fd.setFilenameFilter(new FilenameFilter {
+          override def accept(dir: File, name: String): Boolean = name.endsWith(".jar")
+        })
+        fd.setVisible(true)
+        addFile(new File(fd.getDirectory, fd.getFile))
+      } else {
+        val jfc = new JFileChooser(FileSystemView.getFileSystemView().getHomeDirectory())
+        jfc.setFileFilter(new FileFilter {
+          override def accept(pathname: File): Boolean = pathname.getAbsolutePath.endsWith(".jar")
+          override def getDescription: String = "jar files"
+        })
+        if(jfc.showOpenDialog(settingsWindow) == JFileChooser.APPROVE_OPTION) {
+          addFile(jfc.getSelectedFile)
+        }
+      }
+    }
+  })
 }
 
 class JavaOptionsPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
@@ -124,14 +193,14 @@ class JavaOptionsPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
   c.gridx = 3
   add(timeoutText, c)
 
+  modeComboBox.addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = {
+      profileConfigPanel.setDirty()
+    }
+  })
 }
 
-class CpFileChooserDialog(settingsWindow: SettingsWindow) extends
-  JDialog(settingsWindow, "Classpath Chooser", Dialog.ModalityType.DOCUMENT_MODAL) {
-  
-}
-
-class JavaConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
+class JavaConfigPanel(settingsWindow: SettingsWindow, profileConfigPanel: ProfileConfigPanel) extends JPanel {
 
   setLayout(new GridBagLayout)
   val c = new GridBagConstraints()
@@ -148,7 +217,7 @@ class JavaConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
   val mainClassField = new RegexTextField("^.{1,300}$", 30, profileConfigPanel.setDirty)
   mainClassPanel.add(mainClassField, c)
 
-  val classpathPanel = new ClasspathPanel
+  val classpathPanel = new ClasspathPanel(settingsWindow, profileConfigPanel)
 
   c.anchor = GridBagConstraints.NORTH
   c.insets = new Insets(0, 0, 0, 0)
@@ -176,7 +245,7 @@ class ProfileConfigPanel(settingsWindow: SettingsWindow, var profileConfig: Prof
   val name = profileConfig.name
 
   val telnetConfigPanel = new TelnetConfigPanel(this)
-  val javaConfigPanel = new JavaConfigPanel(this)
+  val javaConfigPanel = new JavaConfigPanel(settingsWindow, this)
   val uiConfigPanel = new UIConfigPanel(this)
 
   val tabs = new JTabbedPane()
@@ -201,24 +270,43 @@ class ProfileConfigPanel(settingsWindow: SettingsWindow, var profileConfig: Prof
 
     telnetConfigPanel.hostPanel.hostField.setText(profileConfig.telnetConfig.host)
     telnetConfigPanel.hostPanel.portField.setText(profileConfig.telnetConfig.port.toString)
+
+    javaConfigPanel.toprow.timeoutText.setText(profileConfig.javaConfig.clientTimeout.toString)
+    javaConfigPanel.toprow.modeComboBox.setSelectedItem(profileConfig.javaConfig.clientMode)
+    javaConfigPanel.mainClassField.setText(profileConfig.javaConfig.mainClass)
+    javaConfigPanel.classpathPanel.model.removeAllElements()
+    profileConfig.javaConfig.classPath.foreach{javaConfigPanel.classpathPanel.model.addElement}
   }
 
   def setDirty() : Unit = settingsWindow.setProfileDirty(profileConfig.name)
 
   def constructProfileConfig = {
-    val host = telnetConfigPanel.hostPanel.hostField.getText
-    val port = Try {
-      telnetConfigPanel.hostPanel.portField.getText.toInt
-    } match {
-      case Failure(e) => profileConfig.telnetConfig.port
-      case Success(port) => port
+    def toInt(string: String, orig: Int) = {
+      Try {
+        string.toInt
+      } match {
+        case Failure(e) => orig
+        case Success(port) => port
+      }
+    }
+
+    def enumToArray[A:ClassTag](enumeration: java.util.Enumeration[A]) = {
+      val arr = Array.newBuilder[A]
+      while(enumeration.hasMoreElements) arr += enumeration.nextElement()
+      arr.result()
     }
 
     ProfileConfig(
       name = profileConfig.name,
       telnetConfig = TelnetConfig(
-        host = host,
-        port = port
+        host = telnetConfigPanel.hostPanel.hostField.getText,
+        port = toInt(telnetConfigPanel.hostPanel.portField.getText, profileConfig.telnetConfig.port)
+      ),
+      javaConfig = JavaConfig(
+        clientMode = javaConfigPanel.toprow.modeComboBox.getSelectedItem.toString,
+        mainClass = javaConfigPanel.mainClassField.getText,
+        clientTimeout = toInt(javaConfigPanel.toprow.timeoutText.getText, profileConfig.javaConfig.clientTimeout),
+        classPath = enumToArray(javaConfigPanel.classpathPanel.model.elements())
       )
     )
   }
