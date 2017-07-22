@@ -30,15 +30,15 @@ object OsTools {
     }
   }
 
-  def macHandlePreferences(callback: () => Unit) = {
+  def macHandlePreferences(callback: => Unit) = {
     MRJApplicationUtils.registerPrefsHandler(new MRJPrefsHandler {
-      override def handlePrefs(): Unit = callback()
+      override def handlePrefs(): Unit = callback
     })
   }
 
-  def macHandleQuit(callback: () => Unit) = {
+  def macHandleQuit(callback: => Unit) = {
     MRJApplicationUtils.registerQuitHandler(new MRJQuitHandler {
-      override def handleQuit(): Unit = callback()
+      override def handleQuit(): Unit = callback
     })
   }
 }

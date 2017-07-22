@@ -1,5 +1,6 @@
 package aug.util
 
+import java.awt.event.{ActionEvent, ActionListener}
 import java.awt.{Color, EventQueue}
 import java.io.{Closeable, File, FileOutputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
@@ -96,6 +97,14 @@ class RingBuffer[A](val capacity: Int)(implicit m: ClassTag[A]) extends scala.co
 object Util {
 
   object Implicits {
+    implicit def actionListener(f:  => Unit) = new ActionListener {
+      override def actionPerformed(e: ActionEvent): Unit = f
+    }
+
+    implicit def actionListener(f: ActionEvent => Unit) = new ActionListener {
+      override def actionPerformed(e: ActionEvent): Unit = f(e)
+    }
+
     implicit def runnable(f: => Unit): Runnable = new Runnable() { def run() = f }
   }
 

@@ -18,6 +18,7 @@ import scala.util.{Failure, Try}
 
 class MainWindow extends JFrame {
   import MainWindow.log
+  import Util.Implicits._
 
   val version = "0.1.dev"
   val systemPanel = new SystemPanel(this)
@@ -36,11 +37,24 @@ class MainWindow extends JFrame {
   setTitle(Util.fullName)
   setSize(1000,900)
 
+  // profile menu
+
   private val profileMenu: JMenu = new JMenu("profile")
 
   private val preferences = new JMenuItem("preferences")
   private val openProfileMenuItem = new JMenuItem("open profile")
   private val closeProfileMenuItem = new JMenuItem("close profile")
+
+  profileMenu.add(openProfileMenuItem)
+  profileMenu.add(closeProfileMenuItem)
+
+  openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta O"))
+  closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta W"))
+
+  openProfileMenuItem.addActionListener(openProfile)
+  addProfileAction(closeProfileMenuItem, (profile: Profile) => ConfigManager.deactivateProfile(profile.name))
+
+  // connections menu
 
   private val connectionsMenu: JMenu = new JMenu("connections")
 
@@ -48,37 +62,51 @@ class MainWindow extends JFrame {
   private val reconnectMenuItem = new JMenuItem("reconnect")
   private val disconnectMenuItem = new JMenuItem("disconnect")
 
-  profileMenu.add(openProfileMenuItem)
-  profileMenu.add(closeProfileMenuItem)
-
   connectionsMenu.add(connectMenuItem)
   connectionsMenu.add(reconnectMenuItem)
   connectionsMenu.add(disconnectMenuItem)
 
-  menus.add(profileMenu)
-  menus.add(connectionsMenu)
-
-  openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta O"))
-  closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta W"))
+  addProfileAction(connectMenuItem, (profile: Profile) => profile.connect)
+  addProfileAction(reconnectMenuItem, (profile: Profile) => profile.reconnect)
+  addProfileAction(disconnectMenuItem, (profile: Profile) => profile.disconnect)
 
   reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta R"))
   connectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta T"))
   disconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta D"))
 
+  // client menu
+
+  private val clientMenu: JMenu = new JMenu("client")
+
+  private val clientStartMenuItem = new JMenuItem("start client")
+  private val clientRestartMenuItem = new JMenuItem("restart client")
+  private val clientStopMenuItem = new JMenuItem("client stop")
+
+  clientStartMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta T"))
+  clientRestartMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta R"))
+  clientStopMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta D"))
+
+  addProfileAction(clientStartMenuItem, (profile: Profile) => profile.clientStart)
+  addProfileAction(clientRestartMenuItem, (profile: Profile) => profile.clientRestart)
+  addProfileAction(clientStopMenuItem, (profile: Profile) => profile.clientStop)
+
+  clientMenu.add(clientStartMenuItem)
+  clientMenu.add(clientRestartMenuItem)
+  clientMenu.add(clientStopMenuItem)
+
+  // add all main menus
+
+  menus.add(profileMenu)
+  menus.add(connectionsMenu)
+  menus.add(clientMenu)
+
   if (OsTools.isMac) {
-    OsTools.macHandlePreferences(() => displaySettings)
-    OsTools.macHandleQuit(() => Main.exit)
+    OsTools.macHandlePreferences(displaySettings)
+    OsTools.macHandleQuit(Main.exit)
   } else {
     profileMenu.add(preferences)
-
-    preferences.addActionListener(new ActionListener {
-      override def actionPerformed(e: ActionEvent): Unit = displaySettings
-    })
+    preferences.addActionListener(displaySettings)
   }
-
-  openProfileMenuItem.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = openProfile
-  })
 
   setJMenuBar(menus)
 
@@ -111,14 +139,9 @@ class MainWindow extends JFrame {
     })
   }
 
-  addProfileAction(connectMenuItem, (profile: Profile) => profile.connect)
-  addProfileAction(reconnectMenuItem, (profile: Profile) => profile.reconnect)
-  addProfileAction(disconnectMenuItem, (profile: Profile) => profile.disconnect)
-  addProfileAction(closeProfileMenuItem, (profile: Profile) => ConfigManager.deactivateProfile(profile.name))
+  def openProfile : Unit = new OpenProfileDialog(this)
 
-  def openProfile = new OpenProfileDialog(this)
-
-  def displaySettings = {
+  def displaySettings : Unit = {
     settingsWindow.setVisible(true)
     settingsWindow.toFront()
   }
