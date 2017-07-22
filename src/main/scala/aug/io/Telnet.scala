@@ -58,7 +58,7 @@ object Telnet {
     TelnetDont.code -> TelnetDont,
     TelnetIac.code -> TelnetIac)
 
-  val options : Map[Byte,TelnetOption] = Map(
+  val options : Map[Byte, TelnetOption] = Map(
     OptionEcho.code -> OptionEcho,
     OptionType.code -> OptionType,
     OptionWinSize.code -> OptionWinSize,
@@ -109,7 +109,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   }
 
   private def constructCommand(command: TelnetCommand, option: TelnetOption) : Array[Byte] = {
-    Array(TelnetIac.code,command.code,option.code)
+    Array(TelnetIac.code, command.code, option.code)
   }
 
   override def finishConnect : Unit = {
@@ -153,8 +153,8 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   private def handleDoOption = {
     log.debug("recv: IAC {} {}", command.text, option.text)
     option match {
-      case OptionType => send(TelnetWill,OptionType)
-      case ou: OptionUnknown => send(TelnetWont,ou)
+      case OptionType => send(TelnetWill, OptionType)
+      case ou: OptionUnknown => send(TelnetWont, ou)
       case _ =>
     }
 
@@ -221,12 +221,22 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
     log.debug("recv: IAC {} {}", command.text,option.text);
     option match {
       case OptionEcho => send(TelnetDo,OptionEcho)
-      case OptionMccp2 => send(TelnetDo,OptionMccp2)
+      case OptionMccp2 =>
+        if (profileConfig.telnetConfig.mccpEnabled) {
+          send(TelnetDo,OptionMccp2)
+        } else send(TelnetDont, OptionMccp2)
+
       case OptionAtcp => send(TelnetDo,OptionAtcp)
       case OptionGmcp =>
-        send(TelnetDo, OptionGmcp)
-        // TODO don't easy code this
-        send(OptionGmcp, "core.supports.set [\"core 1\",\"comm 1\",\"group 1\",\"room 1\",\"char 1\"]")
+        if (profileConfig.telnetConfig.gmcpEnabled) {
+          send(TelnetDo, OptionGmcp)
+          val supports = profileConfig.telnetConfig.gmcpSupports.trim
+          if (supports.length > 0) {
+            send(OptionGmcp, s"core.supports.set [$supports]")
+          }
+          //aard exa: send(OptionGmcp, "core.supports.set [\"core 1\",\"comm 1\",\"group 1\",\"room 1\",\"char 1\"]")
+        } else send(TelnetDont, OptionGmcp)
+
       case _ =>
     }
 
@@ -288,6 +298,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   def send(option: TelnetOption, message: String): Unit = {
     val cmd : Array[Byte] = constructCommand(TelnetSB, option)
     val stop : Array[Byte] = Array(TelnetIac.code, TelnetSE.code)
+    log.info(s"sending w$option: $message")
 
     send(Util.concatenate(cmd, message.getBytes, stop))
   }

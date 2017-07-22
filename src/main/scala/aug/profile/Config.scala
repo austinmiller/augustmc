@@ -43,7 +43,10 @@ case class TelnetConfig(
                          host: String = "",
                          port: Int = 23,
                          fragmentTimeout: Long = 250,
-                         echo: Boolean = true
+                         echo: Boolean = true,
+                         mccpEnabled: Boolean = true,
+                         gmcpEnabled: Boolean = true,
+                         gmcpSupports: String = ""
                        ) {
   private def this() = this("")
 }
