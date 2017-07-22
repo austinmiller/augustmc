@@ -14,6 +14,8 @@ import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+import scala.util.{Failure, Try}
+
 class MainWindow extends JFrame {
   import MainWindow.log
 
@@ -80,9 +82,16 @@ class MainWindow extends JFrame {
 
   setJMenuBar(menus)
 
-  val icon = ImageIO.read(MainWindow.getClass.getResourceAsStream("leaf.png"))
-  setIconImage(icon)
-  OsTools.setDockIcon(icon)
+  Try {
+    val icon = ImageIO.read(MainWindow.getClass.getResourceAsStream("leaf.png"))
+    setIconImage(icon)
+    OsTools.setDockIcon(icon)
+  } match {
+    case Failure(e) =>
+      slog.error("failed to set icon")
+      log.error(e.getMessage, e)
+    case _ =>
+  }
 
   addWindowListener(new WindowListener {
     override def windowDeiconified(e: WindowEvent): Unit = {}
