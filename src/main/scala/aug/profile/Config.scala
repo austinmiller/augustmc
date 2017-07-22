@@ -95,7 +95,9 @@ object ConfigManager {
   val configDir = {
     val homeDir = System.getProperty("user.home")
 
-    val configDir = new File(s"$homeDir/.config/augustmc")
+    val configDirName = System.getProperty("aug.profile.ConfigManager.configDir", "augustmc")
+
+    val configDir = new File(s"$homeDir/.config/$configDirName")
 
     if (!configDir.exists) {
       log.info("creating path {}", configDir.getAbsolutePath)
