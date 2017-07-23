@@ -15,7 +15,8 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 class HostPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
-  setLayout(new FlowLayout())
+  setLayout(new GridBagLayout())
+  val c = new GridBagConstraints()
 
   val border = BorderFactory.createTitledBorder(
     BorderFactory.createEtchedBorder(),
@@ -26,12 +27,68 @@ class HostPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
   val hostField = new RegexTextField("^.{1,90}$", 20, profileConfigPanel.setDirty)
   val portField = new RegexTextField("^[1-9]{1}[0-9]{0,4}$", 5, profileConfigPanel.setDirty)
 
-  add(new JLabel("host:"))
-  add(hostField)
-  add(new JLabel("port:"))
-  add(portField)
+  c.weightx = 1
+  c.gridx = 0
+  c.insets = new Insets(0, 10, 0, 0)
+  c.gridy = 0
+  add(new JLabel("host: "), c)
+
+  c.fill = GridBagConstraints.HORIZONTAL
+  c.weightx = 100
+  c.insets = new Insets(0, 0, 0, 0)
+  c.gridx = 1
+  add(hostField, c)
+
+  c.weightx = 1
+  c.insets = new Insets(0, 10, 0, 0)
+  c.gridx = 2
+  add(new JLabel("port: "), c)
+
+  c.weightx = 1
+  c.gridx = 3
+  c.insets = new Insets(0, 0, 0, 10)
+  add(portField, c)
 
   setMaximumSize(getPreferredSize())
+}
+
+class EnabledBox extends JComboBox[String](Array("disabled", "enabled")) {
+  def setSelectionEnabled(bool: Boolean) = {
+    if (bool) setSelectedItem("enabled") else setSelectedItem("disabled")
+  }
+
+  def isSelectionEnabled = getSelectedItem == "enabled"
+}
+
+class GmcpPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
+  setLayout(new GridBagLayout)
+  private val c = new GridBagConstraints()
+
+  val enabledBox = new EnabledBox
+  val supportLabel = new JLabel("core.supports.set: ")
+  val supportsField = new RegexTextField("", 15, profileConfigPanel.setDirty)
+  supportsField.setToolTipText("If non-empty, will send contents as GMCP option 'core.supports.set'.  Example " +
+    "contents: \"one\", \"two\"")
+
+  c.fill = GridBagConstraints.HORIZONTAL
+  c.weightx = 1
+  c.gridx = 0
+  c.gridy = 0
+  c.insets = new Insets(0, 10, 0, 0)
+  add(enabledBox, c)
+
+  c.gridx = 1
+  c.insets = new Insets(0, 10, 0, 0)
+  add(supportLabel, c)
+
+  c.weightx = 100
+  c.gridx = 2
+  c.insets = new Insets(0, 0, 0, 10)
+  add(supportsField, c)
+
+  setBorder(BorderFactory.createTitledBorder(
+    BorderFactory.createEtchedBorder(),
+    "GMCP"))
 }
 
 class TelnetConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
@@ -48,8 +105,17 @@ class TelnetConfigPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
 
   setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
   val hostPanel = new HostPanel(profileConfigPanel)
+  val gmcpPanel = new GmcpPanel(profileConfigPanel)
 
   add(hostPanel, c)
+
+  c.gridy = 1
+  add(gmcpPanel, c)
+
+  c.fill = GridBagConstraints.BOTH
+  c.weighty = 100
+  c.gridy= 2
+  add(new JPanel(), c)
 }
 
 class ClasspathPanel(settingsWindow: SettingsWindow, profileConfigPanel: ProfileConfigPanel) extends JPanel {
@@ -268,6 +334,8 @@ class ProfileConfigPanel(settingsWindow: SettingsWindow, var profileConfig: Prof
 
     telnetConfigPanel.hostPanel.hostField.setText(profileConfig.telnetConfig.host)
     telnetConfigPanel.hostPanel.portField.setText(profileConfig.telnetConfig.port.toString)
+    telnetConfigPanel.gmcpPanel.enabledBox.setSelectionEnabled(profileConfig.telnetConfig.gmcpEnabled)
+    telnetConfigPanel.gmcpPanel.supportsField.setText(profileConfig.telnetConfig.gmcpSupports)
 
     javaConfigPanel.toprow.timeoutText.setText(profileConfig.javaConfig.clientTimeout.toString)
     javaConfigPanel.toprow.modeComboBox.setSelectedItem(profileConfig.javaConfig.clientMode)
@@ -298,7 +366,9 @@ class ProfileConfigPanel(settingsWindow: SettingsWindow, var profileConfig: Prof
       name = profileConfig.name,
       telnetConfig = TelnetConfig(
         host = telnetConfigPanel.hostPanel.hostField.getText,
-        port = toInt(telnetConfigPanel.hostPanel.portField.getText, profileConfig.telnetConfig.port)
+        port = toInt(telnetConfigPanel.hostPanel.portField.getText, profileConfig.telnetConfig.port),
+        gmcpEnabled = telnetConfigPanel.gmcpPanel.enabledBox.isSelectionEnabled,
+        gmcpSupports = telnetConfigPanel.gmcpPanel.supportsField.getText
       ),
       javaConfig = JavaConfig(
         clientMode = javaConfigPanel.toprow.modeComboBox.getSelectedItem.toString,

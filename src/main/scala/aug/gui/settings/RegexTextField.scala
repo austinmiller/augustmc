@@ -15,7 +15,7 @@ class RegexTextField(pattern: String, columns: Int, valueChangedCallback: () => 
   private def valueChanged = {
     valueChangedCallback()
 
-    if (isTextValid) {
+    if (pattern.length == 0 || isTextValid) {
       setBackground(textFieldBg)
     } else {
       if (getText.trim.size > 0) {
