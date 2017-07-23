@@ -2,7 +2,7 @@ package aug.util
 
 import java.awt.event.{ActionEvent, ActionListener}
 import java.awt.image.BufferedImage
-import java.awt.{Color, EventQueue, GraphicsEnvironment}
+import java.awt.{Color, EventQueue, Font, GraphicsEnvironment}
 import java.io.{Closeable, File, FileOutputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
@@ -98,11 +98,11 @@ class RingBuffer[A](val capacity: Int)(implicit m: ClassTag[A]) extends scala.co
 object Util {
 
   object Implicits {
-    implicit def actionListener(f:  => Unit) = new ActionListener {
+    implicit def actionListener[T](f:  => T) : ActionListener = new ActionListener {
       override def actionPerformed(e: ActionEvent): Unit = f
     }
 
-    implicit def actionListener(f: ActionEvent => Unit) = new ActionListener {
+    implicit def actionListener(f: ActionEvent => Unit) : ActionListener = new ActionListener {
       override def actionPerformed(e: ActionEvent): Unit = f(e)
     }
 
@@ -171,7 +171,10 @@ object Util {
   def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
   def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
 
-  lazy val monospaceFamilies = {
+  val fontSizes = Array(8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64)
+
+  val monospaceFamilies = {
+    // create a graphics environment to measure fonts
     val bf = new BufferedImage(200, 80, BufferedImage.TYPE_INT_RGB)
     val bfg = bf.createGraphics
     val letters: IndexedSeq[Char] = (for (a <- 'a' to 'z') yield a) ++ (for (a <- 'A' to 'Z') yield a)
@@ -181,6 +184,13 @@ object Util {
       val widths = letters.map(ch => fm.stringWidth("" + ch)).toSet
       !letters.exists(!font.canDisplay(_)) && widths.size == 1
     }.map(_.getFamily()).toSet.toList.sorted
+  }
+
+  val defaultFont = {
+    val desirableFonts = List("Menlo", "Consolas")
+
+    desirableFonts.find(monospaceFamilies.contains).map(new Font(_, 0, 12))
+      .getOrElse(new Font(Font.MONOSPACED, 0, 12))
   }
 }
 
