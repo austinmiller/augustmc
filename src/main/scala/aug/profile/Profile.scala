@@ -48,7 +48,7 @@ case object ClientStart extends AbstractProfileEvent(0)
 case object ClientStop extends AbstractProfileEvent(0)
 
 case class UserCommand(data: String) extends AbstractProfileEvent(Int.MaxValue - 1)
-case class SendData(data: String) extends AbstractProfileEvent(Int.MaxValue - 1)
+case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MaxValue - 1)
 
 case object CloseProfile extends AbstractProfileEvent(Int.MaxValue)
 
@@ -73,6 +73,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   addLine("profile: " + profileConfig.name)
 
   thread.start()
+
+  if (profileConfig.javaConfig.clientMode == "autostart") {
+    offer(ClientStart)
+  }
 
   def setProfileConfig(profileConfig: ProfileConfig) = synchronized(this.profileConfig = profileConfig)
 
@@ -102,7 +106,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case TelnetDisconnect =>
             synchronized {
               addLine(Util.colorCode("0") + "--disconnected--")
-              slog.info(s"profile $name lost connection")
+              slog.info(s"profile $name: received disconnect command")
             }
 
             client.foreach(_.onDisconnect())
@@ -115,10 +119,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             client match {
               case Some(client) =>
                 if(!client.handleCommand(data)) {
-                  sendNow(data)
+                  sendNow(data, false)
                 }
 
-              case None => sendNow(data)
+              case None => sendNow(data, false)
             }
 
           case CloseProfile =>
@@ -171,7 +175,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 slog.error(f"profile $name: no client to shutdown")
             }
 
-          case SendData(cmds) => sendNow(cmds)
+          case SendData(cmds, silent) => sendNow(cmds, silent)
 
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")
@@ -314,12 +318,12 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     *
     * @param cmds
     */
-  private def sendNow(cmds: String) : Unit = {
+  private def sendNow(cmds: String, silent: Boolean) : Unit = {
     telnet match {
       case Some(telnet) =>
         cmds.split("\n").foreach { cmd =>
           telnet.send(cmd + "\n")
-          echoCommand(cmd)
+          if (!silent) echoCommand(cmd)
         }
 
       case None => slog.info(s"profile $name: command ignored: $cmds")
@@ -328,9 +332,14 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   }
 
   /**
-    * <p>This should *only* be called by the client. </p>
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
    */
   override def send(cmds: String): Unit = offer(SendData(cmds))
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  override def sendSilently(cmds: String): Unit = offer(SendData(cmds, true))
 }
 
 object Profile {
