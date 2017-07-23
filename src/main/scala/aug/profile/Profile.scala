@@ -78,11 +78,16 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   thread.start()
 
+  profilePanel.setProfileConfig(profileConfig)
+
   if (profileConfig.javaConfig.clientMode == "autostart") {
     offer(ClientStart())
   }
 
-  def setProfileConfig(profileConfig: ProfileConfig) = synchronized(this.profileConfig = profileConfig)
+  def setProfileConfig(profileConfig: ProfileConfig) = synchronized {
+    this.profileConfig = profileConfig
+    profilePanel.setProfileConfig(profileConfig)
+  }
 
   def connect = offer(ProfileConnect())
 

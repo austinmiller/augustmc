@@ -87,24 +87,33 @@ class EnabledBox extends JComboBox[String](Array("disabled", "enabled")) {
   def isSelectionEnabled = getSelectedItem == "enabled"
 }
 
-class FontChooserButton(profileConfigPanel: ProfileConfigPanel, var selectedFont: Font) extends JButton {
+class FontChooserButton(profileConfigPanel: ProfileConfigPanel) extends JButton {
+  var family = ""
+  var fontSize = 12
 
-  setSelectedFont(selectedFont)
+  setText("placeholder")
 
   addActionListener(new ActionListener {
     override def actionPerformed(e: ActionEvent): Unit = fontChooser
   })
 
-  private def setSelectedFont(font: Font): Unit = {
-    selectedFont = font
-    setText(s"${selectedFont.getFamily}, ${selectedFont.getSize}")
-    repaint()
+  def setSelectedFont(family: String, fontSize: Int): Unit = {
+    if (family != this.family || fontSize != this.fontSize) {
+      if (this.family != "") profileConfigPanel.setDirty()
+      this.family = family
+      this.fontSize = fontSize
+      setText(s"${family}, ${fontSize}")
+      repaint()
+    }
   }
 
   private def fontChooser : Unit = {
     val fc = new FontChooser(profileConfigPanel)
-    fc.fontList.setSelectedValue(selectedFont.getFamily, true)
-    fc.sizeList.setSelectedValue(selectedFont.getSize, true)
+    if (family == "default") {
+      fc.fontList.setSelectedIndex(0)
+    } else fc.fontList.setSelectedValue(family, true)
+
+    fc.sizeList.setSelectedValue(family, true)
 
     fc.addWindowListener(new WindowListener {
       override def windowDeiconified(e: WindowEvent): Unit = {}
@@ -114,7 +123,8 @@ class FontChooserButton(profileConfigPanel: ProfileConfigPanel, var selectedFont
           Util.defaultFont.getFamily
         } else fc.fontList.getSelectedValue
         val size = fc.sizeList.getSelectedValue
-        setSelectedFont(new Font(family, 0, size))
+
+        setSelectedFont(family, size)
       }
       override def windowActivated(e: WindowEvent): Unit = {}
       override def windowOpened(e: WindowEvent): Unit = {}
@@ -125,7 +135,6 @@ class FontChooserButton(profileConfigPanel: ProfileConfigPanel, var selectedFont
     fc.setVisible(true)
   }
 }
-
 
 class GridPanel extends JPanel {
   setLayout(new GridBagLayout)
@@ -139,5 +148,19 @@ class GridPanel extends JPanel {
     c.gridwidth = xl
     c.gridheight = yl
     add(comp, c)
+  }
+
+  def fillHorizontal(x: Int, y: Int): Unit = {
+    addToGrid(new JPanel, x, y, 100)
+  }
+
+  def fillVertical(x: Int, y: Int): Unit = {
+    addToGrid(new JPanel, x, y, 1, 100)
+  }
+
+  def setTitledBorder(title: String) : Unit = {
+    setBorder(BorderFactory.createTitledBorder(
+      BorderFactory.createEtchedBorder(),
+      title))
   }
 }

@@ -4,7 +4,7 @@ import java.awt.Font
 import javax.swing.{JPanel, SpringLayout}
 import javax.swing.border.EmptyBorder
 
-import aug.profile.Profile
+import aug.profile.{Profile, ProfileConfig}
 
 class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel {
   val springLayout = new SpringLayout
@@ -36,4 +36,9 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
   def setLine(lineNum: Long, txt: String) = text.setLine(lineNum, txt)
 
   def addCommand(lineNum: Long, cmd: String) = text.addCommand(lineNum, cmd)
+
+  def setProfileConfig(profileConfig: ProfileConfig): Unit = {
+    commandLine.setFont(profileConfig.commandLineFont.toFont)
+    repaint()
+  }
 }

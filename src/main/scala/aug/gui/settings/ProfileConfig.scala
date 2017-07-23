@@ -8,7 +8,7 @@ import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.filechooser.{FileFilter, FileSystemView}
 
 import aug.gui.OsTools
-import aug.profile.{JavaConfig, ProfileConfig, TelnetConfig}
+import aug.profile.{FontConfig, JavaConfig, ProfileConfig, TelnetConfig}
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
 import scala.reflect.ClassTag
@@ -20,7 +20,7 @@ class HostPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
 
   val border = BorderFactory.createTitledBorder(
     BorderFactory.createEtchedBorder(),
-    "Host")
+    "host")
 
   setBorder(border)
 
@@ -352,6 +352,9 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
     javaConfigPanel.mainClassField.setText(profileConfig.javaConfig.mainClass)
     javaConfigPanel.classpathPanel.model.removeAllElements()
     profileConfig.javaConfig.classPath.foreach{javaConfigPanel.classpathPanel.model.addElement}
+
+    val clfc = profileConfig.commandLineFont
+    uiConfigPanel.commandLineConfigPanel.fontButton.setSelectedFont(clfc.family, clfc.size)
   }
 
   def setDirty() : Unit = settingsWindow.setProfileDirty(profileConfig.name)
@@ -385,6 +388,10 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
         mainClass = javaConfigPanel.mainClassField.getText,
         clientTimeout = toInt(javaConfigPanel.toprow.timeoutText.getText, profileConfig.javaConfig.clientTimeout),
         classPath = enumToArray(javaConfigPanel.classpathPanel.model.elements())
+      ),
+      commandLineFont = FontConfig(
+        family = uiConfigPanel.commandLineConfigPanel.fontButton.family,
+        size = uiConfigPanel.commandLineConfigPanel.fontButton.fontSize
       )
     )
   }

@@ -1,11 +1,12 @@
 package aug.profile
 
+import java.awt.Font
 import java.io.{File, FileInputStream, FileOutputStream}
 import javax.xml.bind.{JAXBContext, Marshaller}
 import javax.xml.bind.annotation.{XmlAccessType, XmlAccessorType, XmlRootElement}
 
 import aug.gui.MainWindow
-import aug.util.TryWith
+import aug.util.{TryWith, Util}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -62,6 +63,21 @@ case class JavaConfig(
   private def this() = this("disabled")
 }
 
+@XmlRootElement(name = "FontConfig")
+@XmlAccessorType(XmlAccessType.FIELD)
+case class FontConfig(
+                       family: String = "default",
+                       size: Int = 12
+                     ) {
+  private def this() = this("default")
+
+  def toFont = {
+    if (family == "default") {
+      Util.defaultFont.deriveFont(size)
+    } else new Font(family, 0, size)
+  }
+}
+
 @XmlRootElement(name = "MainConfig")
 @XmlAccessorType(XmlAccessType.FIELD)
 case class MainConfig(
@@ -76,7 +92,8 @@ case class MainConfig(
 case class ProfileConfig(
                           name: String,
                           telnetConfig: TelnetConfig = TelnetConfig(),
-                          javaConfig: JavaConfig = JavaConfig()
+                          javaConfig: JavaConfig = JavaConfig(),
+                          commandLineFont: FontConfig = FontConfig()
                      ) {
   private def this() = this("")
 }
