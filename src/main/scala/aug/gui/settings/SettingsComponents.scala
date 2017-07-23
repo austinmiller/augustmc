@@ -5,6 +5,7 @@ import java.awt._
 import javax.swing._
 import javax.swing.event.{DocumentEvent, DocumentListener}
 
+import aug.profile.FontConfig
 import aug.util.Util
 
 class RegexTextField(pattern: String, columns: Int, valueChangedCallback: () => Unit) extends JTextField(columns) {
@@ -96,6 +97,10 @@ class FontChooserButton(profileConfigPanel: ProfileConfigPanel) extends JButton 
   addActionListener(new ActionListener {
     override def actionPerformed(e: ActionEvent): Unit = fontChooser
   })
+
+  def getSelectedFont = FontConfig(family, fontSize)
+
+  def setSelectedFont(font: FontConfig): Unit = setSelectedFont(font.family, font.size)
 
   def setSelectedFont(family: String, fontSize: Int): Unit = {
     if (family != this.family || fontSize != this.fontSize) {

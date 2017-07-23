@@ -1,8 +1,7 @@
 package aug.gui
 
-import java.awt.Font
-import javax.swing.{JPanel, SpringLayout}
 import javax.swing.border.EmptyBorder
+import javax.swing.{JPanel, SpringLayout}
 
 import aug.profile.{Profile, ProfileConfig}
 
@@ -13,8 +12,6 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
   val commandLine = new CommandLine(profile)
 
   commandLine.grabFocus
-
-  textArea.setFont(new Font( "Monospaced", Font.PLAIN, 12 ))
 
   setLayout(springLayout)
   add(textArea)
@@ -39,6 +36,7 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
 
   def setProfileConfig(profileConfig: ProfileConfig): Unit = {
     commandLine.setFont(profileConfig.commandLineFont.toFont)
+    textArea.setFont(profileConfig.consoleWindow.font.toFont)
     repaint()
   }
 }

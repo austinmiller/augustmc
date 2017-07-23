@@ -78,6 +78,16 @@ case class FontConfig(
   }
 }
 
+@XmlRootElement(name = "WindowConfig")
+@XmlAccessorType(XmlAccessType.FIELD)
+case class WindowConfig(
+                       name: String = "console",
+                       font: FontConfig = FontConfig(),
+                       colorScheme: String = "default"
+                     ) {
+  private def this() = this("")
+}
+
 @XmlRootElement(name = "MainConfig")
 @XmlAccessorType(XmlAccessType.FIELD)
 case class MainConfig(
@@ -93,7 +103,8 @@ case class ProfileConfig(
                           name: String,
                           telnetConfig: TelnetConfig = TelnetConfig(),
                           javaConfig: JavaConfig = JavaConfig(),
-                          commandLineFont: FontConfig = FontConfig()
+                          commandLineFont: FontConfig = FontConfig(),
+                          consoleWindow: WindowConfig = WindowConfig("console")
                      ) {
   private def this() = this("")
 }

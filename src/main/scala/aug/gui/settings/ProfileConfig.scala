@@ -8,7 +8,7 @@ import javax.swing.event.{DocumentEvent, DocumentListener}
 import javax.swing.filechooser.{FileFilter, FileSystemView}
 
 import aug.gui.OsTools
-import aug.profile.{FontConfig, JavaConfig, ProfileConfig, TelnetConfig}
+import aug.profile._
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
 import scala.reflect.ClassTag
@@ -353,8 +353,8 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
     javaConfigPanel.classpathPanel.model.removeAllElements()
     profileConfig.javaConfig.classPath.foreach{javaConfigPanel.classpathPanel.model.addElement}
 
-    val clfc = profileConfig.commandLineFont
-    uiConfigPanel.commandLineConfigPanel.fontButton.setSelectedFont(clfc.family, clfc.size)
+    uiConfigPanel.commandLineConfigPanel.fontButton.setSelectedFont(profileConfig.commandLineFont)
+    uiConfigPanel.consoleWindowConfigPanel.fontButton.setSelectedFont(profileConfig.consoleWindow.font)
   }
 
   def setDirty() : Unit = settingsWindow.setProfileDirty(profileConfig.name)
@@ -392,6 +392,10 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
       commandLineFont = FontConfig(
         family = uiConfigPanel.commandLineConfigPanel.fontButton.family,
         size = uiConfigPanel.commandLineConfigPanel.fontButton.fontSize
+      ),
+      consoleWindow = WindowConfig(
+        "console",
+        font = uiConfigPanel.consoleWindowConfigPanel.fontButton.getSelectedFont
       )
     )
   }
