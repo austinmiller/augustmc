@@ -1,7 +1,8 @@
 package aug.util
 
 import java.awt.event.{ActionEvent, ActionListener}
-import java.awt.{Color, EventQueue}
+import java.awt.image.BufferedImage
+import java.awt.{Color, EventQueue, GraphicsEnvironment}
 import java.io.{Closeable, File, FileOutputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.util.concurrent.Executors
@@ -169,6 +170,18 @@ object Util {
 
   def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
   def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
+
+  lazy val monospaceFamilies = {
+    val bf = new BufferedImage(200, 80, BufferedImage.TYPE_INT_RGB)
+    val bfg = bf.createGraphics
+    val letters: IndexedSeq[Char] = (for (a <- 'a' to 'z') yield a) ++ (for (a <- 'A' to 'Z') yield a)
+
+    GraphicsEnvironment.getLocalGraphicsEnvironment.getAllFonts.filter { font =>
+      val fm = bfg.getFontMetrics(font)
+      val widths = letters.map(ch => fm.stringWidth("" + ch)).toSet
+      !letters.exists(!font.canDisplay(_)) && widths.size == 1
+    }.map(_.getFamily()).toSet.toList.sorted
+  }
 }
 
 case class TelnetColor(color: Int, bright: Boolean) {

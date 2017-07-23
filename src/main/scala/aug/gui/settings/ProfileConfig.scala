@@ -1,7 +1,7 @@
 package aug.gui.settings
 
-import java.awt.event.{ActionEvent, ActionListener, KeyEvent, KeyListener}
 import java.awt._
+import java.awt.event.{ActionEvent, ActionListener, KeyEvent, KeyListener}
 import java.io.{File, FilenameFilter}
 import javax.swing._
 import javax.swing.event.{DocumentEvent, DocumentListener}
