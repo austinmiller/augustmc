@@ -19,38 +19,42 @@ sealed trait ProfileEvent extends Comparable[ProfileEvent] {
   def subPriority : Long
 
   override def compareTo(other: ProfileEvent) : Int = {
-    if (priority == other.priority) {
-      val diff = subPriority - other.subPriority
-      if (diff > 0) 1 else if (diff == 0) 0 else -1
-    } else priority - other.priority
+    val diff = if (priority == other.priority) {
+      subPriority - other.subPriority
+    } else {
+      priority - other.priority
+    }
+
+    if (diff > 0) 1 else if (diff == 0) 0 else -1
   }
 }
 
-abstract class AbstractProfileEvent(major: Int, minor: Long = EventId.nextId) extends ProfileEvent {
+abstract class AbstractProfileEvent(major: Int, minor : Long) extends ProfileEvent {
   override def priority: Int = major
   override def subPriority: Long = minor
 }
 
 private[profile] object EventId {
-  private val next = new AtomicLong(Long.MinValue)
+  private val next = new AtomicLong(0)
   def nextId = next.incrementAndGet()
 }
 
-case object TelnetConnect extends AbstractProfileEvent(Int.MaxValue - 1)
-case class TelnetError(data: String) extends AbstractProfileEvent(0)
-case object TelnetDisconnect extends AbstractProfileEvent(Int.MaxValue - 1)
-case class TelnetRecv(data: String) extends AbstractProfileEvent(0)
-case class TelnetGMCP(data: String) extends AbstractProfileEvent(0)
+case class TelnetConnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue + 1, minor)
+case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nextId)
+case class TelnetDisconnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue + 1, minor)
+case class TelnetRecv(data: String) extends AbstractProfileEvent(0, EventId.nextId)
+case class TelnetGMCP(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 
-case object ProfileConnect extends AbstractProfileEvent(0)
-case object ProfileDisconnect extends AbstractProfileEvent(0)
-case object ClientStart extends AbstractProfileEvent(0)
-case object ClientStop extends AbstractProfileEvent(0)
+case class ProfileConnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
+case class ProfileDisconnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
+case class ClientStart(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
+case class ClientStop(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
 
-case class UserCommand(data: String) extends AbstractProfileEvent(Int.MaxValue - 1)
-case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MaxValue - 1)
+case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class SendData(data: String, silent: Boolean = false) extends
+  AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 
-case object CloseProfile extends AbstractProfileEvent(Int.MaxValue)
+case class CloseProfile(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue, minor)
 
 class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends ProfileInterface
   with AutoCloseable {
@@ -75,26 +79,26 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   thread.start()
 
   if (profileConfig.javaConfig.clientMode == "autostart") {
-    offer(ClientStart)
+    offer(ClientStart())
   }
 
   def setProfileConfig(profileConfig: ProfileConfig) = synchronized(this.profileConfig = profileConfig)
 
-  def connect = offer(ProfileConnect)
+  def connect = offer(ProfileConnect())
 
   def reconnect = {
-    offer(ProfileDisconnect)
-    offer(ProfileConnect)
+    offer(ProfileDisconnect())
+    offer(ProfileConnect())
   }
 
-  def disconnect = offer(ProfileDisconnect)
+  def disconnect = offer(ProfileDisconnect())
 
   private def threadLoop() : Unit = {
     while(running.get()) {
       Try {
         val event = threadQueue.take()
         event match {
-          case TelnetConnect =>
+          case TelnetConnect(_) =>
             addLine(Util.colorCode("0") + "--connected--")
             slog.info(s"profile $name connected")
 
@@ -103,7 +107,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case TelnetError(data) =>
             slog.info(s"profile $name: telnet error: $data")
 
-          case TelnetDisconnect =>
+          case TelnetDisconnect(_) =>
             synchronized {
               addLine(Util.colorCode("0") + "--disconnected--")
               slog.info(s"profile $name: received disconnect command")
@@ -125,12 +129,12 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               case None => sendNow(data, false)
             }
 
-          case CloseProfile =>
+          case CloseProfile(_) =>
             Try { telnet.foreach(_.close) }
             Try { client.foreach(_.shutdown) }
             mainWindow.tabbedPane.remove(profilePanel)
 
-          case ProfileConnect =>
+          case ProfileConnect(_) =>
             telnet match {
               case Some(_) => slog.error("profile %s already connected", name)
               case None =>
@@ -140,11 +144,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 telnet.foreach(_.connect)
             }
 
-          case ProfileDisconnect =>
+          case ProfileDisconnect(_) =>
             telnet.foreach(_.close)
             telnet = None
 
-          case ClientStart =>
+          case ClientStart(_) =>
             Try {
               client match {
                 case Some(_) => throw new RuntimeException(s"profile $name failed to init client, already has a client")
@@ -161,12 +165,12 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 } match {
                   case Failure(e) =>
                     slog.error(s"profile $name: failed to init client, won't autostart, ${e.getMessage}")
-                    offer(ClientStop)
+                    offer(ClientStop())
                   case Success(_) => slog.info(s"profile $name: started client successfully")
                 }
             }
 
-          case ClientStop =>
+          case ClientStop(_) =>
             client match {
               case Some(scr) =>
                 client = None
@@ -197,18 +201,18 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     }
   }
 
-  def clientStart = offer(ClientStart)
+  def clientStart = offer(ClientStart())
 
-  def clientStop = offer(ClientStop)
+  def clientStop = offer(ClientStop())
 
   def clientRestart = {
-    offer(ClientStart)
-    offer(ClientStop)
+    offer(ClientStart())
+    offer(ClientStop())
   }
 
   override def close(): Unit = {
     if(running.compareAndSet(true, false)) {
-      offer(CloseProfile)
+      offer(CloseProfile())
       thread.join(profileConfig.javaConfig.clientTimeout + 500)
     }
   }
@@ -248,10 +252,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private def clientTimedOut() : Unit = {
     log.error(s"profile $name: script ran out of time to respond")
     slog.error(s"profile $name: script ran out of time to respond")
-    offer(ClientStop)
+    offer(ClientStop())
 
     if (profileConfig.javaConfig.clientMode == "autostart") {
-      offer(ClientStart)
+      offer(ClientStart())
     }
   }
 

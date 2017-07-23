@@ -100,7 +100,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   override def close = {
     super.close
-    profile.offer(TelnetDisconnect)
+    profile.offer(TelnetDisconnect())
   }
 
   override def connect = {
@@ -114,7 +114,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   override def finishConnect : Unit = {
     super.finishConnect
-    if(!isClosed) profile.offer(TelnetConnect)
+    if(!isClosed) profile.offer(TelnetConnect())
   }
 
   private def handleByte(c: Byte) : Unit = {
