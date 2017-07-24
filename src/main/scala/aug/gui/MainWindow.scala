@@ -2,10 +2,8 @@ package aug.gui
 
 import java.awt.event._
 import java.awt.{Desktop, Frame, Insets}
-import java.io.File
 import javax.imageio.ImageIO
 import javax.swing._
-import javax.swing.event.{MenuEvent, MenuListener}
 
 import aug.gui.settings.SettingsWindow
 import aug.io.{ConnectionManager, SystemLog, TransparentColor}

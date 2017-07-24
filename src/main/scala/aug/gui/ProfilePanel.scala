@@ -1,8 +1,8 @@
 package aug.gui
 
-import java.awt.{Component, GridLayout}
+import java.awt.{Component, Graphics, GridLayout}
 import javax.swing.border.EmptyBorder
-import javax.swing.{JPanel, SpringLayout}
+import javax.swing.{JPanel, SpringLayout, SwingUtilities}
 
 import aug.profile.{Profile, ProfileConfig}
 
@@ -33,7 +33,7 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
   def setContents(component: Component): Unit = {
     container.removeAll()
     container.add(component)
-    repaint()
+    container.revalidate()
   }
 
   def setProfileConfig(profileConfig: ProfileConfig): Unit = {

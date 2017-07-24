@@ -79,8 +79,7 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
       childClassLoader.findClass(name)
     } match {
       case Failure(e) =>
-        log.error(s"failed to load class $name")
-        throw e
+        throw new Exception(s"failed to load class $name with classpath ${urls.toList}", e)
       case Success(c) => c
     }
   }

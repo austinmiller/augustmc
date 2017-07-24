@@ -198,6 +198,9 @@ class Text {
           case 0 => bold = false
           case 1 => bold = true
 
+          case 2 => // won't support
+          case 7 => // won't support
+
           case 30 => fg = TelnetColorBlack
           case 31 => fg = TelnetColorRed
           case 32 => fg = TelnetColorGreen

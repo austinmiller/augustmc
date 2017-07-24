@@ -225,8 +225,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   def clientStop = offer(ClientStop())
 
   def clientRestart = {
-    offer(ClientStart())
     offer(ClientStop())
+    offer(ClientStart())
   }
 
   override def close(): Unit = {
@@ -396,39 +396,41 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     }
 
     def convertToComponents(windowReference: WindowReference): (Component, List[(JSplitPane, Float)]) = {
-      if (windowReference.isInstanceOf[SplitWindow]) {
+      windowReference match {
+        case sw: SplitWindow =>
 
-        val sw = windowReference.asInstanceOf[SplitWindow]
-        val (c1, l1) = convertToComponents(sw.getTopLeft)
-        val (c2, l2) = convertToComponents(sw.getBotRight)
+          val (c1, l1) = convertToComponents(sw.getTopLeft)
+          val (c2, l2) = convertToComponents(sw.getBotRight)
 
-        val splitPanel = new JSplitPane()
-        splitPanel.setDividerSize(2)
-        splitPanel.setBorder(BorderFactory.createEmptyBorder())
+          val splitPanel = new JSplitPane()
+          splitPanel.setDividerSize(2)
+          splitPanel.setBorder(BorderFactory.createEmptyBorder())
 
-        if (sw.isHorizontal) {
-          splitPanel.setOrientation(JSplitPane.HORIZONTAL_SPLIT)
-          splitPanel.setLeftComponent(c1)
-          splitPanel.setRightComponent(c2)
-        } else {
-          splitPanel.setOrientation(JSplitPane.VERTICAL_SPLIT)
-          splitPanel.setTopComponent(c1)
-          splitPanel.setRightComponent(c2)
-        }
+          if (sw.isHorizontal) {
+            splitPanel.setOrientation(JSplitPane.HORIZONTAL_SPLIT)
+            splitPanel.setLeftComponent(c1)
+            splitPanel.setRightComponent(c2)
+          } else {
+            splitPanel.setOrientation(JSplitPane.VERTICAL_SPLIT)
+            splitPanel.setTopComponent(c1)
+            splitPanel.setRightComponent(c2)
+          }
 
-        (splitPanel, l1 ++ l2 :+ (splitPanel, sw.getDividerLocation))
-      } else (windows(windowReference.getName), List.empty)
+          (splitPanel, l1 ++ l2 :+ (splitPanel, sw.getDividerLocation))
+        case _ => (windows(windowReference.getName), List.empty)
+      }
     }
 
     val (component, dividerLocations) = convertToComponents(windowReference)
 
     profilePanel.setContents(component)
 
-    SwingUtilities.invokeLater(new Runnable {
+    // really terrible hack
+    Util.invokeLater(10, () => SwingUtilities.invokeLater(new Runnable {
       override def run(): Unit = {
         dividerLocations.foreach(s => s._1.setDividerLocation(s._2))
       }
-    })
+    }))
 
     true
   }
@@ -452,8 +454,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     })
   }
 
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
   override def getTextWindow(name: String): TextWindowInterface = {
-    windows.get(name).getOrElse(throw new RuntimeException(s"no window found with name $name"))
+    windows.getOrElse(name, throw new RuntimeException(s"no window found with name $name"))
   }
 }
 

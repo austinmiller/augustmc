@@ -2,12 +2,11 @@ package aug.util
 
 import java.awt.event.{ActionEvent, ActionListener}
 import java.awt.image.BufferedImage
-import java.awt.{Color, EventQueue, Font, GraphicsEnvironment}
+import java.awt.{Color, Font, GraphicsEnvironment}
 import java.io._
 import java.nio.ByteBuffer
-import java.util
 import java.util.concurrent.Executors
-import java.util.jar.{Attributes, JarEntry, JarInputStream, JarOutputStream}
+import java.util.jar.{Attributes, JarEntry, JarInputStream}
 import java.util.regex.Pattern
 
 import aug.profile.ConfigManager
@@ -15,15 +14,15 @@ import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.scalalogging.Logger
-import org.apache.commons.io.{FileUtils, IOUtils}
+import org.apache.commons.io.IOUtils
 import org.reflections.Reflections
 import org.reflections.scanners.{ResourcesScanner, SubTypesScanner}
 import org.reflections.util.{ClasspathHelper, ConfigurationBuilder, FilterBuilder}
 import org.slf4j.LoggerFactory
 
 import scala.reflect.ClassTag
-import scala.util.{Failure, Try}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Try}
 
 
 object JsonUtil {
