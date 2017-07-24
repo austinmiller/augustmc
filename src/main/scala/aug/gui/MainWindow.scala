@@ -2,6 +2,7 @@ package aug.gui
 
 import java.awt.event._
 import java.awt.{Frame, Insets}
+import java.io.File
 import javax.imageio.ImageIO
 import javax.swing._
 import javax.swing.event.{MenuEvent, MenuListener}
@@ -169,13 +170,16 @@ object Main extends App {
 
   val mainWindow = new MainWindow
 
+  if (Util.writeSharedJar(Util.sharedJarFile)) {
+    mainWindow.slog.info(s"wrote shared.jar to ${Util.sharedJarFile}")
+  }
+
   def exit : Unit = {
     ConfigManager.closeAllProfiles
     ConnectionManager.close()
     Frame.getFrames.foreach(_.dispose())
     System.exit(0)
   }
-
 }
 
 

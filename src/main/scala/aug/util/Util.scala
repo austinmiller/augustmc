@@ -3,15 +3,22 @@ package aug.util
 import java.awt.event.{ActionEvent, ActionListener}
 import java.awt.image.BufferedImage
 import java.awt.{Color, EventQueue, Font, GraphicsEnvironment}
-import java.io.{Closeable, File, FileOutputStream, InputStream, OutputStream}
+import java.io._
 import java.nio.ByteBuffer
+import java.util
 import java.util.concurrent.Executors
+import java.util.jar.{Attributes, JarEntry, JarInputStream, JarOutputStream}
 import java.util.regex.Pattern
 
+import aug.profile.ConfigManager
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.scalalogging.Logger
+import org.apache.commons.io.{FileUtils, IOUtils}
+import org.reflections.Reflections
+import org.reflections.scanners.{ResourcesScanner, SubTypesScanner}
+import org.reflections.util.{ClasspathHelper, ConfigurationBuilder, FilterBuilder}
 import org.slf4j.LoggerFactory
 
 import scala.reflect.ClassTag
@@ -192,6 +199,74 @@ object Util {
     desirableFonts.find(monospaceFamilies.contains).map(new Font(_, 0, 12))
       .getOrElse(new Font(Font.MONOSPACED, 0, 12))
   }
+
+  lazy val sharedClassesInPackage: Array[Class[_]] = {
+    val reflections = new Reflections(new ConfigurationBuilder()
+      .setScanners(new SubTypesScanner(false /* don't exclude Object.class */), new ResourcesScanner())
+      .setUrls(ClasspathHelper.forClassLoader(ClasspathHelper.contextClassLoader(), ClasspathHelper.staticClassLoader()))
+      .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix("aug.script.shared"))))
+    reflections.getSubTypesOf(classOf[Object]).toArray.map(_.asInstanceOf[Class[_]])
+  }
+
+  /**
+    * <p>Writed shared class files as jar to file, iff the files don't equal.  Return true
+    * or false based on whether it was necessary to write the jar.</p>
+    * @param file
+    * @return
+    */
+  def writeSharedJar(file: File) : Boolean = {
+    val classBytes: Map[String, Array[Byte]] = Util.sharedClassesInPackage.map{ cl =>
+      val name = cl.getName.replace(".", "/") + ".class"
+      val is = cl.getResourceAsStream(cl.getSimpleName + ".class")
+      name -> IOUtils.toByteArray(is)
+    }.toMap
+
+
+    val existingClassBytes = getExistingClassBytes(file)
+
+    val different = classBytes.keys != existingClassBytes.keys || classBytes.keys.exists { ck =>
+      !existingClassBytes(ck).sameElements(classBytes(ck))
+    }
+
+    if (different) {
+      TryWith(new FileOutputStream(file)) { fos =>
+        val manifest = new java.util.jar.Manifest
+        manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
+        TryWith(new java.util.jar.JarOutputStream(fos, manifest)) { jos =>
+          classBytes.foreach { e =>
+            val cl = e._1
+            val bytes = e._2
+            val entry = new JarEntry(cl)
+            jos.putNextEntry(entry)
+            entry.setTime(System.currentTimeMillis())
+            jos.write(bytes)
+            jos.closeEntry()
+          }
+        }
+      }
+      true
+    } else false
+  }
+
+  def getExistingClassBytes(file: File) = {
+    val mapb = Map.newBuilder[String, Array[Byte]]
+
+    if (file.exists()) {
+      TryWith(new JarInputStream(new FileInputStream(file))) { jis =>
+        var entry = jis.getNextJarEntry
+        while (entry != null) {
+          if (entry.getName.endsWith(".class")) {
+            mapb += entry.getName -> IOUtils.toByteArray(jis)
+          }
+          entry = jis.getNextJarEntry
+        }
+      }
+    }
+
+    mapb.result()
+  }
+
+  val sharedJarFile = new File(ConfigManager.configDir, "shared.jar")
 }
 
 case class TelnetColor(color: Int, bright: Boolean) {

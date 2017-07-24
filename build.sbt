@@ -22,8 +22,6 @@ libraryDependencies += "org.springframework" % "spring-context" % springVersion
 libraryDependencies += "org.springframework" % "spring-test" % springVersion
 libraryDependencies += "org.springframework" % "spring-jdbc" % springVersion
 
-libraryDependencies += "com.google.guava" % "guava" % "18.0"
-
 libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "1.1.1"
 
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
@@ -32,6 +30,8 @@ libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" 
 libraryDependencies += "commons-io" % "commons-io" % "2.5"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+
+libraryDependencies += "org.reflections" % "reflections" % "0.9.11"
 
 // for apple toolkit and ui
 libraryDependencies += "mrj" % "MRJToolkitStubs" % "1.0"
