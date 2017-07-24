@@ -19,7 +19,7 @@ object ScriptLoader {
 
   private val clientInterfaceT = classOf[ClientInterface]
 
-  def constructScript(profileConfig: ProfileConfig): Client = {
+  def constructScript(profile: Profile, profileConfig: ProfileConfig): Client = {
     val classpath = profileConfig.javaConfig.classPath.map(new File(_).toURI.toURL)
     val mainClass = profileConfig.javaConfig.mainClass
     val scriptLoader = new ScriptLoader(classpath)
@@ -29,7 +29,7 @@ object ScriptLoader {
     }
 
     val client = clientT.newInstance().asInstanceOf[ClientInterface]
-    new Client(profileConfig, client)
+    new Client(profile, profileConfig, client)
   }
 }
 
@@ -95,7 +95,7 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
   * @param profileConfig
   * @param client
   */
-class Client private[script](profileConfig: ProfileConfig, client: ClientInterface) extends AutoCloseable
+class Client private[script](profile: Profile, profileConfig: ProfileConfig, client: ClientInterface) extends AutoCloseable
   with ClientInterface {
   import ScriptLoader.log
 
@@ -122,7 +122,9 @@ class Client private[script](profileConfig: ProfileConfig, client: ClientInterfa
       case Failure(e: TimeoutException) =>
         future.cancel(true)
         throw e
-      case Failure(e) => throw e
+      case Failure(e) =>
+        profile.handleClientException(e)
+        throw e
     }
   }
 

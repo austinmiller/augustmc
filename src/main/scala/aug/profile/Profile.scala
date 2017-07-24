@@ -2,7 +2,7 @@ package aug.profile
 
 import java.awt.Component
 import java.util
-import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
+import java.util.concurrent.{ExecutionException, PriorityBlockingQueue, TimeoutException}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import javax.swing.border.EmptyBorder
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
@@ -155,7 +155,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case ProfileConnect(_) =>
             telnet match {
-              case Some(_) => slog.error("profile %s already connected", name)
+              case Some(_) => slog.error(s"profile $name: already connected")
               case None =>
                 telnet = Some(new Telnet(this, profileConfig))
                 slog.info(f"profile $name starting connection to ${profileConfig.telnetConfig.host}:" +
@@ -171,7 +171,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             Try {
               client match {
                 case Some(_) => throw new RuntimeException(s"profile $name failed to init client, already has a client")
-                case None => ScriptLoader.constructScript(profileConfig)
+                case None => ScriptLoader.constructScript(this, profileConfig)
               }
             } match {
               case Failure(e) =>
@@ -234,6 +234,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       offer(CloseProfile())
       thread.join(profileConfig.javaConfig.clientTimeout + 500)
     }
+  }
+
+  def handleClientException(throwable: Throwable): Unit = {
+    slog.error(s"profile $name: received exception from client", throwable)
   }
 
   /**
