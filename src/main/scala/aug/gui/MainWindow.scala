@@ -1,7 +1,7 @@
 package aug.gui
 
 import java.awt.event._
-import java.awt.{Frame, Insets}
+import java.awt.{Desktop, Frame, Insets}
 import java.io.File
 import javax.imageio.ImageIO
 import javax.swing._
@@ -45,15 +45,27 @@ class MainWindow extends JFrame {
   private val preferences = new JMenuItem("preferences")
   private val openProfileMenuItem = new JMenuItem("open profile")
   private val closeProfileMenuItem = new JMenuItem("close profile")
+  private val openConfigDirMenuItem = new JMenuItem("open config dir")
 
   profileMenu.add(openProfileMenuItem)
   profileMenu.add(closeProfileMenuItem)
+  profileMenu.add(new JSeparator)
+  profileMenu.add(openConfigDirMenuItem)
+
+  if (OsTools.isMac) {
+    OsTools.macHandlePreferences(displaySettings)
+    OsTools.macHandleQuit(Main.exit)
+  } else {
+    profileMenu.add(preferences)
+    preferences.addActionListener(displaySettings)
+  }
 
   openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta O"))
   closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta W"))
 
   openProfileMenuItem.addActionListener(openProfile)
   addProfileAction(closeProfileMenuItem, (profile: Profile) => ConfigManager.deactivateProfile(profile.name))
+  openConfigDirMenuItem.addActionListener(openConfigDir)
 
   // connections menu
 
@@ -101,14 +113,6 @@ class MainWindow extends JFrame {
   menus.add(connectionsMenu)
   menus.add(clientMenu)
 
-  if (OsTools.isMac) {
-    OsTools.macHandlePreferences(displaySettings)
-    OsTools.macHandleQuit(Main.exit)
-  } else {
-    profileMenu.add(preferences)
-    preferences.addActionListener(displaySettings)
-  }
-
   setJMenuBar(menus)
 
   Try {
@@ -145,6 +149,15 @@ class MainWindow extends JFrame {
   def displaySettings : Unit = {
     settingsWindow.setVisible(true)
     settingsWindow.toFront()
+  }
+
+  def openConfigDir : Unit = {
+    if(!Desktop.isDesktopSupported) {
+      slog.error("desktop open is not supported")
+      return
+    }
+
+    Desktop.getDesktop.open(ConfigManager.configDir)
   }
 
   setVisible(true)
