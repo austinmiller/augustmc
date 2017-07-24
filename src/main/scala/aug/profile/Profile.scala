@@ -1,11 +1,15 @@
 package aug.profile
 
+import java.awt.Component
+import java.util
 import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
+import javax.swing.border.EmptyBorder
+import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
-import aug.gui.{MainWindow, ProfilePanel}
+import aug.gui.{MainWindow, ProfilePanel, SplittableTextArea}
 import aug.io.Telnet
-import aug.script.shared.ProfileInterface
+import aug.script.shared.{ProfileInterface, SplitWindow, TextWindowInterface, WindowReference}
 import aug.script.{Client, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
@@ -73,12 +77,18 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private val running = new AtomicBoolean(true)
   private var lineNum: Long = 0
   private var fragment: String = ""
+  private val windows = scala.collection.mutable.Map[String, SplittableTextArea]()
+
+  val console = new SplittableTextArea()
+  windows("console") = console
 
   addLine("profile: " + profileConfig.name)
 
   thread.start()
 
   profilePanel.setProfileConfig(profileConfig)
+  profilePanel.setContents(console)
+  setProfileConfig(profileConfig)
 
   if (profileConfig.javaConfig.clientMode == "autostart") {
     offer(ClientStart())
@@ -87,6 +97,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   def setProfileConfig(profileConfig: ProfileConfig) = synchronized {
     this.profileConfig = profileConfig
     profilePanel.setProfileConfig(profileConfig)
+    windows.values.foreach({ w =>
+      w.setActiveFont(profileConfig.consoleWindow.font.toFont)
+      w.repaint()
+    })
   }
 
   def connect = offer(ProfileConnect())
@@ -230,8 +244,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     */
   private def echoCommand(cmd: String) : Unit = {
     val ln = if (fragment.length > 0) lineNum else lineNum - 1
-    profilePanel.addCommand(ln, cmd)
-    profilePanel.repaint()
+    console.text.addCommand(ln, cmd)
+    console.repaint()
   }
 
   /**
@@ -242,10 +256,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     * @param line
     */
   private def addLine(line: String) : Unit = {
-    profilePanel.setLine(lineNum, line)
+    console.text.setLine(lineNum, line)
     lineNum += 1
     fragment = ""
-    profilePanel.repaint()
+    console.repaint()
   }
 
   /**
@@ -279,7 +293,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
         case List(last) =>
           fragment += last
-          profilePanel.setLine(lineNum, fragment)
+          console.text.setLine(lineNum, fragment)
 
           if (!clientTimedOut && client.isDefined) {
             Try {
@@ -349,6 +363,98 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     * <p><STRONG>This should *only* be called by the client.</STRONG></p>
     */
   override def sendSilently(cmds: String): Unit = offer(SendData(cmds, true))
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  override def setWindowGraph(windowReference: WindowReference): Boolean = {
+
+    @tailrec
+    def getNames(windows: List[WindowReference], names: List[String] = List.empty): List[String] = {
+      if (windows.isEmpty) {
+        names
+      } else {
+        val newNames = windows.map(_.getName).filter(!_.isEmpty)
+        val newWindows = windows.filter(_.isInstanceOf[SplitWindow])
+          .map(_.asInstanceOf[SplitWindow])
+          .flatMap(sw => List(sw.getTopLeft, sw.getBotRight))
+        getNames(newWindows, names ++ newNames)
+      }
+    }
+
+    val names = getNames(List(windowReference))
+    println(names)
+
+    if (names.exists(windows.get(_).isEmpty)) {
+      slog.error(s"profile $name: not every name in $names existed in ${windows.keys}")
+      return false
+    }
+
+    if (!names.contains("console")) {
+      slog.error(s"profile $name: window graph did not contain windows console")
+      return false
+    }
+
+    def convertToComponents(windowReference: WindowReference): (Component, List[(JSplitPane, Float)]) = {
+      if (windowReference.isInstanceOf[SplitWindow]) {
+
+        val sw = windowReference.asInstanceOf[SplitWindow]
+        val (c1, l1) = convertToComponents(sw.getTopLeft)
+        val (c2, l2) = convertToComponents(sw.getBotRight)
+
+        val splitPanel = new JSplitPane()
+        splitPanel.setDividerSize(2)
+        splitPanel.setBorder(BorderFactory.createEmptyBorder())
+
+        if (sw.isHorizontal) {
+          splitPanel.setOrientation(JSplitPane.HORIZONTAL_SPLIT)
+          splitPanel.setLeftComponent(c1)
+          splitPanel.setRightComponent(c2)
+        } else {
+          splitPanel.setOrientation(JSplitPane.VERTICAL_SPLIT)
+          splitPanel.setTopComponent(c1)
+          splitPanel.setRightComponent(c2)
+        }
+
+        (splitPanel, l1 ++ l2 :+ (splitPanel, sw.getDividerLocation))
+      } else (windows(windowReference.getName), List.empty)
+    }
+
+    val (component, dividerLocations) = convertToComponents(windowReference)
+
+    profilePanel.setContents(component)
+
+    SwingUtilities.invokeLater(new Runnable {
+      override def run(): Unit = {
+        dividerLocations.foreach(s => s._1.setDividerLocation(s._2))
+      }
+    })
+
+    true
+  }
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  override def getWindowNames: util.List[String] = {
+    import scala.collection.JavaConverters._
+    windows.keys.toList.asJava
+  }
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  override def createTextWindow(name: String): TextWindowInterface = {
+    windows.getOrElseUpdate(name, {
+      val sta = new SplittableTextArea(true)
+      sta.setActiveFont(profileConfig.consoleWindow.font.toFont)
+      sta
+    })
+  }
+
+  override def getTextWindow(name: String): TextWindowInterface = {
+    windows.get(name).getOrElse(throw new RuntimeException(s"no window found with name $name"))
+  }
 }
 
 object Profile {

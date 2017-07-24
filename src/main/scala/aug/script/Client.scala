@@ -67,11 +67,9 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
       }
     }
 
-    def deferToParent(name:String) : Boolean = {
-      name.startsWith("aug.script.shared") ||
-      name.startsWith("java") ||
-      name.startsWith("scala")
-    }
+    val parentPrefixes = List("aug.script.shared", "aug.script.test", "java", "scala")
+
+    def deferToParent(name: String) : Boolean = parentPrefixes.exists(name.startsWith)
   }
 
   private val childClassLoader = new ChildClassLoader(urls, new DetectClass(getParent))
@@ -80,7 +78,9 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
     Try {
       childClassLoader.findClass(name)
     } match {
-      case Failure(e) => throw e
+      case Failure(e) =>
+        log.error(s"failed to load class $name")
+        throw e
       case Success(c) => c
     }
   }

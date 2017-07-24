@@ -4,15 +4,16 @@ import java.awt._
 import javax.swing.border.EmptyBorder
 import javax.swing.{JPanel, JTabbedPane}
 
+import aug.util.Util
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
 class SystemPanel(mainWindow: MainWindow) extends JPanel {
   setLayout(new GridLayout(1, 1))
 
-  val text = new Text
-  val textArea = new SplittableTextArea(text)
+  val textArea = new SplittableTextArea
+  val text = textArea.text
 
-  textArea.setFont(new Font( "Monospaced", Font.PLAIN, 14 ))
+  textArea.setActiveFont(Util.defaultFont)
 
   add(textArea)
 

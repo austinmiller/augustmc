@@ -2,11 +2,13 @@ package aug.gui
 
 import java.awt.event.{MouseWheelEvent, MouseWheelListener}
 import java.awt.image.BufferedImage
-import java.awt.{Font, Graphics}
+import java.awt.{Color, Font, Graphics}
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import javax.swing.border.EmptyBorder
-import javax.swing.{JPanel, JSplitPane}
+import javax.swing.{BorderFactory, JPanel, JSplitPane}
 
 import aug.io._
+import aug.script.shared.TextWindowInterface
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -125,6 +127,10 @@ class Text {
     lines(lineNum) = line.copy(commands = line.commands :+ cmd)
   }
 
+  def addLine(txt: String) = synchronized {
+    setLine(botLine + 1, txt)
+  }
+
   def setLine(lineNum: Long, txt: String) = synchronized {
     if (txt.contains("\n")) throw new Exception("text should not contain newline")
 
@@ -233,7 +239,7 @@ object Text {
 class TextArea(val text: Text) extends JPanel {
   private var colorScheme : ColorScheme = DefaultColorScheme
   private var fontWidth = 0
-  private var fontHeight = 0
+  private var fontHeight = new AtomicInteger
   private var fontDescent = 0
   private var wrapAt = 100
   private var botLine : Long = -1
@@ -257,23 +263,25 @@ class TextArea(val text: Text) extends JPanel {
     repaint()
   }
 
-  override def setFont(font: Font) : Unit = {
-    super.setFont(font)
+  def setActiveFont(font: Font) : Unit = synchronized {
+    setFont(font)
 
     val bf = new BufferedImage(200, 80, BufferedImage.TYPE_INT_RGB)
     val bfg = bf.createGraphics
     val metrics = bfg.getFontMetrics(font)
 
     fontWidth = metrics.stringWidth("a")
-    fontHeight = metrics.getHeight
+    fontHeight.set(metrics.getHeight)
     fontDescent = metrics.getDescent
 
     repaint()
   }
 
-  override def paint(g: Graphics): Unit = {
+  override def paint(g: Graphics): Unit = synchronized {
     val ts = System.currentTimeMillis
     super.paint(g)
+
+    val fontHeight = this.fontHeight.get
 
     val height = g.getClipBounds.height - 5
     val numLines = Math.ceil(height.toDouble / fontHeight).toInt
@@ -301,11 +309,11 @@ class TextArea(val text: Text) extends JPanel {
     linesToDraw.reverse.zipWithIndex.foreach {
       case (line, index) => drawLine(line.fragments, 5, height - index * fontHeight)
     }
-
   }
 }
 
-class SplittableTextArea(text: Text) extends JSplitPane with MouseWheelListener {
+class SplittableTextArea(echoable: Boolean = false) extends JSplitPane with MouseWheelListener with TextWindowInterface {
+  val text = new Text
   private val topTextArea = new TextArea(text)
   private val textArea = new TextArea(text)
   private var scrollPos : Long = 0
@@ -325,10 +333,10 @@ class SplittableTextArea(text: Text) extends JSplitPane with MouseWheelListener 
 
   setBorder(new EmptyBorder(0, 0, 0, 0))
 
-  override def setFont(font: Font): Unit = {
-    super.setFont(font)
-    topTextArea.setFont(font)
-    textArea.setFont(font)
+  def setActiveFont(font: Font): Unit = {
+    setFont(font)
+    topTextArea.setActiveFont(font)
+    textArea.setActiveFont(font)
   }
 
   def unsplit(): Unit = {
@@ -367,4 +375,10 @@ class SplittableTextArea(text: Text) extends JSplitPane with MouseWheelListener 
     e.consume()
   }
 
+  override def echo(line: String): Unit = {
+    if (echoable) {
+      text.addLine(line)
+      repaint()
+    }
+  }
 }
