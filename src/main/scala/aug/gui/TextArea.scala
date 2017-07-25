@@ -198,8 +198,9 @@ class Text {
           case 0 => bold = false
           case 1 => bold = true
 
-          case 2 => // won't support
-          case 7 => // won't support
+          case 2 => // draw feintly -- won't support yet
+          case 4 => // draw underline -- won't support yet
+          case 7 => // reverse fg/bg -- won't support yet
 
           case 30 => fg = TelnetColorBlack
           case 31 => fg = TelnetColorRed
@@ -287,8 +288,10 @@ class TextArea(val text: Text) extends JPanel {
     val fontHeight = this.fontHeight.get
 
     val height = g.getClipBounds.height - 5
+    val width = g.getClipBounds.width - 5
     val numLines = Math.ceil(height.toDouble / fontHeight).toInt
-    val linesToDraw = text.getWrapLines(numLines, wrapAt, botLine)
+    val numChars = Math.max(Math.floor(width.toDouble / fontWidth).toInt, 20)
+    val linesToDraw = text.getWrapLines(numLines, numChars, botLine)
 
     @tailrec
     def drawLine(fragments: List[Fragment], x: Int, y: Int): Unit = {
