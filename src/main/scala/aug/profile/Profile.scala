@@ -1,6 +1,7 @@
 package aug.profile
 
 import java.awt.Component
+import java.io.File
 import java.util
 import java.util.concurrent.{ExecutionException, PriorityBlockingQueue, TimeoutException}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
@@ -387,7 +388,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     }
 
     val names = getNames(List(windowReference))
-    println(names)
 
     if (names.exists(windows.get(_).isEmpty)) {
       slog.error(s"profile $name: not every name in $names existed in ${windows.keys}")
@@ -463,6 +463,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     */
   override def getTextWindow(name: String): TextWindowInterface = {
     windows.getOrElse(name, throw new RuntimeException(s"no window found with name $name"))
+  }
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  override def getConfigDir: File = {
+    ConfigManager.getClientDir(name)
   }
 }
 

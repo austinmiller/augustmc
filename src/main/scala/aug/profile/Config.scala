@@ -149,6 +149,12 @@ object ConfigManager {
     nd
   }
 
+  def getClientDir(name: String) = {
+    val f = new File(profilesDir, s"$name/client")
+    f.mkdir()
+    f
+  }
+
   val mainConfigPath = new File(configDir, "mainConfig.xml")
 
   def setMainConfig(mainConfig: MainConfig) = {
