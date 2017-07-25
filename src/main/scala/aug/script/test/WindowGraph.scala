@@ -6,7 +6,7 @@ class WindowGraph extends ClientInterface {
   var profile : ProfileInterface = null
   var com : TextWindowInterface = null
 
-  override def init(profileInterface: ProfileInterface): Unit = {
+  override def init(profileInterface: ProfileInterface, reloadData: ReloadData): Unit = {
     profile = profileInterface
     com = profile.createTextWindow("com")
     val metric = profile.createTextWindow("metric")
@@ -27,7 +27,7 @@ class WindowGraph extends ClientInterface {
     metric.echo("100 xpm")
   }
 
-  override def shutdown(): Unit = {}
+  override def shutdown(): ReloadData = { new ReloadData }
 
   override def handleLine(lineNum: Long, line: String): Boolean = {
     if (line.contains("Exits")) {

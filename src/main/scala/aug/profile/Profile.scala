@@ -3,14 +3,13 @@ package aug.profile
 import java.awt.Component
 import java.io.File
 import java.util
-import java.util.concurrent.{ExecutionException, PriorityBlockingQueue, TimeoutException}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
-import javax.swing.border.EmptyBorder
+import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
 import aug.gui.{MainWindow, ProfilePanel, SplittableTextArea}
 import aug.io.Telnet
-import aug.script.shared.{ProfileInterface, SplitWindow, TextWindowInterface, WindowReference}
+import aug.script.shared._
 import aug.script.{Client, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
@@ -79,6 +78,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var lineNum: Long = 0
   private var fragment: String = ""
   private val windows = scala.collection.mutable.Map[String, SplittableTextArea]()
+  private var clientReloadData = new ReloadData
 
   val console = new SplittableTextArea()
   windows("console") = console
@@ -181,7 +181,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               case Success(script) =>
                 this.client = Some(script)
                 Try {
-                  script.init(this)
+                  script.init(this, clientReloadData)
                 } match {
                   case Failure(e) =>
                     slog.error(s"profile $name: failed to init client, won't autostart, ${e.getMessage}")
@@ -194,7 +194,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             client match {
               case Some(scr) =>
                 client = None
-                scr.shutdown()
+                clientReloadData = scr.shutdown()
               case None =>
                 slog.error(f"profile $name: no client to shutdown")
             }

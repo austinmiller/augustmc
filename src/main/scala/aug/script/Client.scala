@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{Callable, CountDownLatch, Executors, TimeUnit}
 
 import aug.profile._
-import aug.script.shared.{ClientInterface, ProfileInterface}
+import aug.script.shared.{ClientInterface, ProfileInterface, ReloadData}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -108,7 +108,20 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
     }
   }
 
-  override def shutdown(): Unit = close()
+  override def shutdown(): ReloadData = {
+
+    val m = Try {
+      execute(() => client.shutdown())
+    } match {
+      case Failure(e) =>
+        profile.handleClientException(e)
+        new ReloadData
+      case Success(m) => if (m == null) new ReloadData else m
+    }
+
+    close()
+    m
+  }
 
   private def execute[ReturnType](f: () => ReturnType): ReturnType = {
     val future = executorService.submit(new Callable[ReturnType] {
@@ -128,7 +141,8 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
     }
   }
 
-  override def init(profile: ProfileInterface): Unit = execute(() => client.init(profile))
+  override def init(profile: ProfileInterface, reloadData: ReloadData): Unit =
+    execute(() => client.init(profile, reloadData))
   override def onConnect(): Unit = execute(() => client.onConnect())
   override def handleLine(lineNum: Long, line: String): Boolean = execute(() => client.handleLine(lineNum, line))
   override def handleFragment(s: String): Unit = execute(() => client.handleFragment(s))

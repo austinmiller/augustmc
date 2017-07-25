@@ -1,8 +1,25 @@
 package aug.script.shared;
 
 public interface ClientInterface {
-    void init(ProfileInterface profileInterface);
-    void shutdown();
+    /**
+     * <p>Called exactly once, when the script is loaded. profileInterface can be used to
+     * manipulate the profile and discover other supported interactions between the client
+     * and the profile.  reloadData is guaranteed to be not null and will contain any
+     * data from returned from a previous invocation ClientInterface.shutdown even if
+     * the classpath changed.  This does not persist if the mud client is closed, so this
+     * is not a good solution for persisting data.  The ideal use case is to persist
+     * transient data across script reloads.</p>
+     */
+    void init(ProfileInterface profileInterface, ReloadData reloadData);
+
+    /**
+     * <p>Called exactly once when the java client is being shutdown.  The return value
+     * will be passed to the .init of the next loading of the java client if that occurs
+     * while the mud client is open and the profile hasn't been restarted.  This will not
+     * persist across rebooting the mud client.</p>
+     * @return
+     */
+    ReloadData shutdown();
 
     /**
      * <p>Handle incoming line from the game.</p>
