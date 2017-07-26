@@ -60,7 +60,7 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
           }
         } match {
           case Failure(e) =>
-            log.error(s"failed to load in jail $name", e)
+            log.error(s"failed to load in jail $name")
             throw new ClassNotFoundException()
           case Success(c) => c
         }
