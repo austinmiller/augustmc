@@ -11,6 +11,8 @@ object OsTools {
 
   val shortcutKey = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()
 
+  val accelerator = if(OsTools.isMac) "meta" else "control"
+
   def setDockIcon(icon: Image) : Unit = {
     if (isMac == false) return
 

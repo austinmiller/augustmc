@@ -8,7 +8,7 @@ import javax.swing._
 import aug.gui.settings.SettingsWindow
 import aug.io.{ConnectionManager, SystemLog, TransparentColor}
 import aug.profile.{ConfigManager, Profile}
-import aug.util.Util
+import aug.util.{LoremIpsum, Util}
 import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -22,6 +22,7 @@ class MainWindow extends JFrame {
   val systemPanel = new SystemPanel(this)
   val slog = new SystemLog(systemPanel)
   slog.raw(Util.fullName)
+  slog.raw(LoremIpsum.paragraphs(10))
 
   val tabbedPane = new TabbedPane(this)
   tabbedPane.addTab("system", systemPanel)
@@ -49,7 +50,7 @@ class MainWindow extends JFrame {
   profileMenu.add(new JSeparator)
   profileMenu.add(openConfigDirMenuItem)
 
-  val acclr = if(OsTools.isMac) "meta" else "control"
+  val acclr = OsTools.accelerator
 
   if (OsTools.isMac) {
     OsTools.macHandlePreferences(displaySettings())
@@ -111,6 +112,7 @@ class MainWindow extends JFrame {
 
   private val windowMenu = new JMenu("window")
   private val selectTabMenu = new JMenu("select tab")
+  private val copyTextMenuItem = new JMenuItem("copy text")
 
   for (i <- 0 to 9) {
     val selectTabMenuItem = new JMenuItem(s"select tab $i")
@@ -119,7 +121,12 @@ class MainWindow extends JFrame {
     selectTabMenuItem.addActionListener(selectTab(i))
   }
 
+  copyTextMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr C"))
+
+  copyTextMenuItem.addActionListener(tabbedPane.getSelectedComponent.asInstanceOf[HasHighlight].copyText())
+
   windowMenu.add(selectTabMenu)
+  windowMenu.add(copyTextMenuItem)
 
   // add all main menus
 

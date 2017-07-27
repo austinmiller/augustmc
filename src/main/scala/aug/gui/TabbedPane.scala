@@ -7,10 +7,10 @@ import javax.swing.{JPanel, JTabbedPane}
 import aug.util.Util
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
-class SystemPanel(mainWindow: MainWindow) extends JPanel {
+class SystemPanel(mainWindow: MainWindow) extends JPanel with HasHighlight {
   setLayout(new GridLayout(1, 1))
 
-  val textArea = new SplittableTextArea
+  val textArea = new SplittableTextArea(this)
   val text = textArea.text
 
   textArea.setActiveFont(Util.defaultFont)

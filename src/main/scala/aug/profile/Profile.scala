@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
-import aug.gui.{MainWindow, ProfilePanel, SplittableTextArea}
+import aug.gui.{HasHighlight, MainWindow, ProfilePanel, SplittableTextArea}
 import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
 import aug.script.shared._
 import aug.script.{Client, ScriptLoader}
@@ -64,7 +64,8 @@ case class ProfileDisconnect() extends AbstractProfileEvent(0, EventId.nextId)
 case class ClientStart() extends AbstractProfileEvent(0, EventId.nextId)
 case class ClientStop() extends AbstractProfileEvent(0, EventId.nextId)
 
-class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends AutoCloseable {
+class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends AutoCloseable
+  with HasHighlight {
   import Profile.log
   import Util.Implicits._
 
@@ -89,7 +90,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var fragment: String = ""
   private var clientReloadData = new ReloadData
 
-  val console = new SplittableTextArea()
+  val console = new SplittableTextArea(this)
   windows("console") = console
 
   addLine("profile: " + profileConfig.name)
@@ -507,7 +508,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     */
   private[profile] def createTextWindow(name: String): TextWindowInterface = {
     windows.getOrElseUpdate(name, {
-      val sta = new SplittableTextArea(true)
+      val sta = new SplittableTextArea(this, true)
       sta.setActiveFont(profileConfig.consoleWindow.font.toFont)
       sta
     })

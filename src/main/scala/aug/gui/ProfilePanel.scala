@@ -7,7 +7,7 @@ import javax.swing.{JPanel, SpringLayout}
 
 import aug.profile.{Profile, ProfileConfig}
 
-class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel {
+class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel with HasHighlight {
   private val springLayout = new SpringLayout
   private val container = new JPanel
   container.setLayout(new GridLayout(1, 1))
@@ -39,6 +39,8 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
     commandLine.setFont(profileConfig.commandLineFont.toFont)
     repaint()
   }
+
+  override def copyText(): Unit = profile.copyText()
 
   addComponentListener(new ComponentListener {
     override def componentShown(e: ComponentEvent): Unit = commandLine.grabFocus()
