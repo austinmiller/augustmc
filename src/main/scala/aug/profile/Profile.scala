@@ -2,6 +2,7 @@ package aug.profile
 
 import java.awt.Component
 import java.io.File
+import java.lang.Thread.UncaughtExceptionHandler
 import java.util
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
@@ -85,6 +86,12 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   addLine("profile: " + profileConfig.name)
 
+  thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler {
+    override def uncaughtException(t: Thread, e: Throwable): Unit = {
+      e.printStackTrace()
+    }
+  })
+
   thread.start()
 
   profilePanel.setProfileConfig(profileConfig)
@@ -115,7 +122,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   private def threadLoop() : Unit = {
     while(running.get()) {
-      Try {
+      try {
         val event = threadQueue.take()
         event match {
           case TelnetConnect(_) =>
@@ -204,19 +211,20 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")
         }
-      } match {
-        case Failure(to: TimeoutException) => clientTimedOut()
-        case Failure(e) =>
+      } catch {
+        case to: TimeoutException => clientTimedOut()
+        case e: Throwable =>
           log.error("event handling failure", e)
-          slog.error(f"event handling failure: ${e.getMessage}")
+          slog.error(s"profile $name: event handling failure: ${e.getMessage}")
         case _ =>
       }
     }
+    slog.info(s"profile $name: event thread exiting")
   }
 
   def offer(event: ProfileEvent): Unit = {
     if (!threadQueue.offer(event)) {
-      slog.error(f"profile $name failed to offer event $event")
+      slog.error(f"profile $name: failed to offer event $event")
       log.error(f"profile $name failed to offer event $event")
     }
   }
@@ -232,6 +240,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   override def close(): Unit = {
     if(running.compareAndSet(true, false)) {
+      slog.info(s"profile $name: closing profile")
       offer(CloseProfile())
       thread.join(profileConfig.javaConfig.clientTimeout + 500)
     }
