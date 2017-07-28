@@ -178,6 +178,8 @@ object ConfigManager {
 
   def getActiveProfiles = synchronized(activeProfiles.keys)
 
+  def getProfileDir(name: String) = new File(profilesDir, name)
+
   def getProfiles = synchronized(profiles.values.toList)
 
   def getProfile(name: String) : Option[ProfileConfig] = synchronized {

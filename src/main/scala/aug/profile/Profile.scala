@@ -2,6 +2,7 @@ package aug.profile
 
 import java.awt.Component
 import java.io.File
+import java.lang.Boolean
 import java.lang.Thread.UncaughtExceptionHandler
 import java.util
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
@@ -9,7 +10,7 @@ import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
 import aug.gui.{MainWindow, ProfilePanel, SplittableTextArea}
-import aug.io.Telnet
+import aug.io.{ColorlessTextLogger, Telnet, TextLogger}
 import aug.script.shared._
 import aug.script.{Client, ScriptLoader}
 import aug.util.Util
@@ -44,9 +45,15 @@ private[profile] object EventId {
   def nextId = next.incrementAndGet()
 }
 
+case class CloseProfile(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue, minor)
+
 case class TelnetConnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue + 1, minor)
-case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetDisconnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue + 1, minor)
+case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class ProfileLog(on: Boolean, color: Boolean) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+
+case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetRecv(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetGMCP(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 
@@ -54,12 +61,6 @@ case class ProfileConnect(minor: Long = EventId.nextId) extends AbstractProfileE
 case class ProfileDisconnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
 case class ClientStart(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
 case class ClientStop(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
-
-case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
-case class SendData(data: String, silent: Boolean = false) extends
-  AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
-
-case class CloseProfile(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue, minor)
 
 class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends ProfileInterface
   with AutoCloseable {
@@ -71,14 +72,19 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   val name = profileConfig.name
   mainWindow.tabbedPane.addProfile(name, profilePanel)
 
-  private var telnet : Option[Telnet] = None
-  private var client : Option[Client] = None
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
+  private val windows = scala.collection.mutable.Map[String, SplittableTextArea]()
   private val threadQueue = new PriorityBlockingQueue[ProfileEvent]()
   private val running = new AtomicBoolean(true)
+  private val logDir = new File(ConfigManager.getProfileDir(name), "log")
+  logDir.mkdir()
+
+  private var telnet : Option[Telnet] = None
+  private var client : Option[Client] = None
+  private var textLogger : Option[TextLogger] = None
+  private var colorlessTextLogger : Option[ColorlessTextLogger] = None
   private var lineNum: Long = 0
   private var fragment: String = ""
-  private val windows = scala.collection.mutable.Map[String, SplittableTextArea]()
   private var clientReloadData = new ReloadData
 
   val console = new SplittableTextArea()
@@ -102,6 +108,9 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     offer(ClientStart())
   }
 
+  offer(ProfileLog(true, false))
+  offer(ProfileLog(true, true))
+
   def setProfileConfig(profileConfig: ProfileConfig) = synchronized {
     this.profileConfig = profileConfig
     profilePanel.setProfileConfig(profileConfig)
@@ -111,14 +120,14 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     })
   }
 
-  def connect = offer(ProfileConnect())
+  def connect() = offer(ProfileConnect())
 
-  def reconnect = {
+  def reconnect() = {
     offer(ProfileDisconnect())
     offer(ProfileConnect())
   }
 
-  def disconnect = offer(ProfileDisconnect())
+  def disconnect() = offer(ProfileDisconnect())
 
   private def threadLoop() : Unit = {
     while(running.get()) {
@@ -148,8 +157,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case UserCommand(data) =>
             client match {
-              case Some(client) =>
-                if(!client.handleCommand(data)) {
+              case Some(c) =>
+                if(!c.handleCommand(data)) {
                   sendNow(data, false)
                 }
 
@@ -157,8 +166,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             }
 
           case CloseProfile(_) =>
-            Try { telnet.foreach(_.close) }
-            Try { client.foreach(_.shutdown) }
+            closeQuietly(telnet.foreach(_.close))
+            closeQuietly(client.foreach(_.shutdown())) // fixme, should close
+            closeQuietly(textLogger.foreach(_.close()))
+            closeQuietly(colorlessTextLogger.foreach(_.close()))
             mainWindow.tabbedPane.remove(profilePanel)
 
           case ProfileConnect(_) =>
@@ -208,6 +219,23 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case SendData(cmds, silent) => sendNow(cmds, silent)
 
+          case ProfileLog(on, color) =>
+            if (!on && color && textLogger.isDefined) {
+              closeQuietly(textLogger.foreach(_.close()))
+              textLogger = None
+              slog.info(s"profile $name: no longer logging colored text")
+            } else if (on && color && textLogger.isEmpty) {
+              textLogger = Some(new TextLogger(logDir))
+              slog.info(s"profile $name: logging color to $logDir")
+            } else if (!on && !color && colorlessTextLogger.isDefined) {
+              closeQuietly(colorlessTextLogger.foreach(_.close()))
+              colorlessTextLogger = None
+              slog.info(s"profile $name: no longer logging")
+            } else if (on && !color && textLogger.isEmpty) {
+              colorlessTextLogger = Some(new ColorlessTextLogger(logDir))
+              slog.info(s"profile $name: logging to $logDir")
+            }
+
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")
         }
@@ -216,7 +244,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         case e: Throwable =>
           log.error("event handling failure", e)
           slog.error(s"profile $name: event handling failure: ${e.getMessage}")
-        case _ =>
       }
     }
     slog.info(s"profile $name: event thread exiting")
@@ -229,11 +256,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     }
   }
 
-  def clientStart = offer(ClientStart())
+  def clientStart() = offer(ClientStart())
 
-  def clientStop = offer(ClientStop())
+  def clientStop() = offer(ClientStop())
 
-  def clientRestart = {
+  def clientRestart() = {
     offer(ClientStop())
     offer(ClientStart())
   }
@@ -248,6 +275,14 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   def handleClientException(throwable: Throwable): Unit = {
     slog.error(s"profile $name: received exception from client", throwable)
+  }
+
+  private def closeQuietly[T](f: => T): Unit = {
+    try {
+      f
+    } catch {
+      case _: Throwable =>
+    }
   }
 
   /**
@@ -266,8 +301,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     * <p>Add line to console</p>
     *
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
-    *
-    * @param line
     */
   private def addLine(line: String) : Unit = {
     console.text.setLine(lineNum, line)
@@ -280,7 +313,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     * <p>Handle client timing out.</p>
     *
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
-    *
     */
   private def clientTimedOut() : Unit = {
     log.error(s"profile $name: script ran out of time to respond")
@@ -296,10 +328,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     * <p>Process text sent from server.</p>
     *
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
-    *
-    * @param txt
     */
   private def processText(txt: String) : Unit = {
+
+    textLogger.foreach(_.addText(txt))
+    colorlessTextLogger.foreach(_.addText(txt))
 
     @tailrec
     def handleText(texts: List[String], clientTimedOut: Boolean = false): Boolean = {
@@ -321,7 +354,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         case text :: tail =>
           val line = fragment + text
 
-          val didWeTimeout = if (!clientTimedOut && client.isDefined) {
+          val didWeTimeout: Boolean = if (!clientTimedOut && client.isDefined) {
             Try {
               if(!client.get.handleLine(lineNum, line)) {
                 addLine(line)
@@ -353,13 +386,12 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     *
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
     *
-    * @param cmds
     */
   private def sendNow(cmds: String, silent: Boolean) : Unit = {
     telnet match {
-      case Some(telnet) =>
+      case Some(t) =>
         cmds.split("\n").foreach { cmd =>
-          telnet.send(cmd + "\n")
+          t.send(cmd + "\n")
           if (!silent) echoCommand(cmd)
         }
 
@@ -381,7 +413,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   /**
     * <p><STRONG>This should *only* be called by the client.</STRONG></p>
     */
-  override def setWindowGraph(windowReference: WindowReference): Boolean = {
+  override def setWindowGraph(windowReference: WindowReference): java.lang.Boolean = {
 
     @tailrec
     def getNames(windows: List[WindowReference], names: List[String] = List.empty): List[String] = {
@@ -480,6 +512,16 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   override def getConfigDir: File = {
     ConfigManager.getClientDir(name)
   }
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  override def logText(log: Boolean): Unit = offer(ProfileLog(log, false))
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  override def logColor(log: Boolean): Unit = offer(ProfileLog(log, true))
 }
 
 object Profile {
