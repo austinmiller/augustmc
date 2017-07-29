@@ -149,7 +149,7 @@ public interface ProfileInterface {
      * <p>The client should expect to receive a shutdown request.  A new client will be instantiated
      * and have it's init client called only after the first has been shut down (excepting where
      * the first is hanging and times out).</p>
-     * 
+     *
      * <p>This generates a high-priority event.</p>
      */
     void clientRestart();

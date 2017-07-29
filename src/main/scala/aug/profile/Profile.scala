@@ -174,7 +174,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case CloseProfile(_) =>
             closeQuietly(telnet.foreach(_.close))
-            closeQuietly(client.foreach(_.shutdown())) // fixme, should close
+            closeQuietly(client.foreach(_.shutdown()))
+            closeQuietly(mongo.foreach(_.close()))
             closeQuietly(textLogger.foreach(_.close()))
             closeQuietly(colorlessTextLogger.foreach(_.close()))
             mainWindow.tabbedPane.remove(profilePanel)

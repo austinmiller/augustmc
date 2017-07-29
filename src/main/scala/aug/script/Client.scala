@@ -2,12 +2,10 @@ package aug.script
 
 import java.io.File
 import java.net.{URL, URLClassLoader}
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{Callable, CountDownLatch, Executors, TimeUnit}
+import java.util.concurrent.{Callable, Executors, TimeUnit}
 
 import aug.profile._
 import aug.script.shared.{ClientInterface, ProfileInterface, ReloadData}
-import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -92,8 +90,6 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
   *   methods more than the configured timeout.  If the timeout is reached, the client thread will be interrupted and
   *   the client can expect to be shutdown quickly after that.
   * </p>
-  * @param profileConfig
-  * @param client
   */
 class Client private[script](profile: Profile, profileConfig: ProfileConfig, client: ClientInterface) extends AutoCloseable
   with ClientInterface {
@@ -110,22 +106,21 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
 
   override def shutdown(): ReloadData = {
 
-    val m = Try {
-      execute(() => client.shutdown())
-    } match {
-      case Failure(e) =>
+    val m: ReloadData = try {
+      execute(client.shutdown())
+    } catch {
+      case e: Throwable =>
         profile.handleClientException(e)
         new ReloadData
-      case Success(m) => if (m == null) new ReloadData else m
     }
 
     close()
-    m
+    if (m == null) new ReloadData else m
   }
 
-  private def execute[ReturnType](f: () => ReturnType): ReturnType = {
+  private def execute[ReturnType](f: => ReturnType, cancelOnTimeout: Boolean = true): ReturnType = {
     val future = executorService.submit(new Callable[ReturnType] {
-      override def call(): ReturnType = f()
+      override def call(): ReturnType = f
     })
 
     Try {
@@ -133,7 +128,7 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
     } match {
       case Success(rv) => rv
       case Failure(e: TimeoutException) =>
-        future.cancel(true)
+        if (cancelOnTimeout) future.cancel(true)
         throw e
       case Failure(e) =>
         profile.handleClientException(e)
@@ -144,9 +139,9 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   override def init(profile: ProfileInterface, reloadData: ReloadData): Unit =
     execute(() => client.init(profile, reloadData))
   override def onConnect(): Unit = execute(() => client.onConnect())
-  override def handleLine(lineNum: Long, line: String): Boolean = execute(() => client.handleLine(lineNum, line))
+  override def handleLine(lineNum: Long, line: String): Boolean = execute(client.handleLine(lineNum, line))
   override def handleFragment(s: String): Unit = execute(() => client.handleFragment(s))
   override def onDisconnect(): Unit = execute(() => client.onDisconnect())
   override def handleGmcp(s: String): Unit = execute(() => client.handleGmcp(s))
-  override def handleCommand(s: String): Boolean = execute(() => client.handleCommand(s))
+  override def handleCommand(s: String): Boolean = execute(client.handleCommand(s))
 }
