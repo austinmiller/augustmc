@@ -1,8 +1,9 @@
 package aug.gui
 
-import java.awt.{Component, Graphics, GridLayout}
+import java.awt.event.{ComponentEvent, ComponentListener}
+import java.awt.{Component, GridLayout}
 import javax.swing.border.EmptyBorder
-import javax.swing.{JPanel, SpringLayout, SwingUtilities}
+import javax.swing.{JPanel, SpringLayout}
 
 import aug.profile.{Profile, ProfileConfig}
 
@@ -11,8 +12,6 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
   private val container = new JPanel
   container.setLayout(new GridLayout(1, 1))
   val commandLine = new CommandLine(profile)
-
-  commandLine.grabFocus
 
   setLayout(springLayout)
   add(container)
@@ -40,4 +39,11 @@ class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPa
     commandLine.setFont(profileConfig.commandLineFont.toFont)
     repaint()
   }
+
+  addComponentListener(new ComponentListener {
+    override def componentShown(e: ComponentEvent): Unit = commandLine.grabFocus()
+    override def componentHidden(e: ComponentEvent): Unit = {}
+    override def componentMoved(e: ComponentEvent): Unit = {}
+    override def componentResized(e: ComponentEvent): Unit = {}
+  })
 }
