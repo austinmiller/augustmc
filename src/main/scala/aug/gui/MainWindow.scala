@@ -104,11 +104,26 @@ class MainWindow extends JFrame {
   clientMenu.add(clientRestartMenuItem)
   clientMenu.add(clientStopMenuItem)
 
+  // window menu
+
+  private val windowMenu = new JMenu("window")
+  private val selectTabMenu = new JMenu("select tab")
+
+  for (i <- 0 to 9) {
+    val selectTabMenuItem = new JMenuItem(s"select tab $i")
+    selectTabMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"meta $i"))
+    selectTabMenu.add(selectTabMenuItem)
+    selectTabMenuItem.addActionListener(selectTab(i))
+  }
+
+  windowMenu.add(selectTabMenu)
+
   // add all main menus
 
   menus.add(profileMenu)
   menus.add(connectionsMenu)
   menus.add(clientMenu)
+  menus.add(windowMenu)
 
   setJMenuBar(menus)
 
@@ -133,7 +148,7 @@ class MainWindow extends JFrame {
     override def windowIconified(e: WindowEvent): Unit = {}
   })
 
-  def addProfileAction(jMenuItem: JMenuItem, callback: (Profile) => Unit) : Unit = {
+  private def addProfileAction(jMenuItem: JMenuItem, callback: (Profile) => Unit) : Unit = {
     jMenuItem.addActionListener(new ActionListener {
       override def actionPerformed(e: ActionEvent): Unit = {
         tabbedPane.active.map(_.profile).foreach(callback)
@@ -141,20 +156,26 @@ class MainWindow extends JFrame {
     })
   }
 
-  def openProfile(): Unit = new OpenProfileDialog(this)
+  private def openProfile(): Unit = new OpenProfileDialog(this)
 
-  def displaySettings(): Unit = {
+  private def displaySettings(): Unit = {
     settingsWindow.setVisible(true)
     settingsWindow.toFront()
   }
 
-  def openConfigDir(): Unit = {
-    if(!Desktop.isDesktopSupported) {
+  private def openConfigDir(): Unit = {
+    if (!Desktop.isDesktopSupported) {
       slog.error("desktop open is not supported")
       return
     }
 
     Desktop.getDesktop.open(ConfigManager.configDir)
+  }
+
+  private def selectTab(tabNum: Int): Unit = {
+    if (tabbedPane.getTabCount > tabNum) {
+      tabbedPane.setSelectedIndex(tabNum)
+    }
   }
 
   setVisible(true)
