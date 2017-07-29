@@ -19,7 +19,6 @@ class MainWindow extends JFrame {
   import MainWindow.log
   import Util.Implicits._
 
-  val version = "0.1.dev"
   val systemPanel = new SystemPanel(this)
   val slog = new SystemLog(systemPanel)
   slog.raw(Util.fullName)
@@ -51,19 +50,19 @@ class MainWindow extends JFrame {
   profileMenu.add(openConfigDirMenuItem)
 
   if (OsTools.isMac) {
-    OsTools.macHandlePreferences(displaySettings)
-    OsTools.macHandleQuit(Main.exit)
+    OsTools.macHandlePreferences(displaySettings())
+    OsTools.macHandleQuit(Main.exit())
   } else {
     profileMenu.add(preferences)
-    preferences.addActionListener(displaySettings)
+    preferences.addActionListener(displaySettings())
   }
 
   openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta O"))
   closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta W"))
 
-  openProfileMenuItem.addActionListener(openProfile)
+  openProfileMenuItem.addActionListener(openProfile())
   addProfileAction(closeProfileMenuItem, (profile: Profile) => ConfigManager.deactivateProfile(profile.name))
-  openConfigDirMenuItem.addActionListener(openConfigDir)
+  openConfigDirMenuItem.addActionListener(openConfigDir())
 
   // connections menu
 
@@ -77,9 +76,9 @@ class MainWindow extends JFrame {
   connectionsMenu.add(reconnectMenuItem)
   connectionsMenu.add(disconnectMenuItem)
 
-  addProfileAction(connectMenuItem, (profile: Profile) => profile.connect)
-  addProfileAction(reconnectMenuItem, (profile: Profile) => profile.reconnect)
-  addProfileAction(disconnectMenuItem, (profile: Profile) => profile.disconnect)
+  addProfileAction(connectMenuItem, (profile: Profile) => profile.connect())
+  addProfileAction(reconnectMenuItem, (profile: Profile) => profile.reconnect())
+  addProfileAction(disconnectMenuItem, (profile: Profile) => profile.disconnect())
 
   reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta R"))
   connectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta T"))
@@ -97,9 +96,9 @@ class MainWindow extends JFrame {
   clientRestartMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta R"))
   clientStopMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta D"))
 
-  addProfileAction(clientStartMenuItem, (profile: Profile) => profile.clientStart)
-  addProfileAction(clientRestartMenuItem, (profile: Profile) => profile.clientRestart)
-  addProfileAction(clientStopMenuItem, (profile: Profile) => profile.clientStop)
+  addProfileAction(clientStartMenuItem, (profile: Profile) => profile.clientStart())
+  addProfileAction(clientRestartMenuItem, (profile: Profile) => profile.clientRestart())
+  addProfileAction(clientStopMenuItem, (profile: Profile) => profile.clientStop())
 
   clientMenu.add(clientStartMenuItem)
   clientMenu.add(clientRestartMenuItem)
@@ -126,7 +125,7 @@ class MainWindow extends JFrame {
 
   addWindowListener(new WindowListener {
     override def windowDeiconified(e: WindowEvent): Unit = {}
-    override def windowClosing(e: WindowEvent): Unit = Main.exit
+    override def windowClosing(e: WindowEvent): Unit = Main.exit()
     override def windowClosed(e: WindowEvent): Unit = {}
     override def windowActivated(e: WindowEvent): Unit = {}
     override def windowOpened(e: WindowEvent): Unit = {}
@@ -142,14 +141,14 @@ class MainWindow extends JFrame {
     })
   }
 
-  def openProfile : Unit = new OpenProfileDialog(this)
+  def openProfile(): Unit = new OpenProfileDialog(this)
 
-  def displaySettings : Unit = {
+  def displaySettings(): Unit = {
     settingsWindow.setVisible(true)
     settingsWindow.toFront()
   }
 
-  def openConfigDir : Unit = {
+  def openConfigDir(): Unit = {
     if(!Desktop.isDesktopSupported) {
       slog.error("desktop open is not supported")
       return
@@ -166,8 +165,8 @@ object MainWindow {
 }
 
 object Main extends App {
-  ConfigManager.load
-  ConnectionManager.start
+  ConfigManager.load()
+  ConnectionManager.start()
 
   OsTools.init("August MC")
 
@@ -185,7 +184,7 @@ object Main extends App {
     mainWindow.slog.info(s"wrote shared.jar to ${Util.sharedJarFile}")
   }
 
-  def exit : Unit = {
+  def exit(): Unit = {
     ConfigManager.closeAllProfiles
     ConnectionManager.close()
     Frame.getFrames.foreach(_.dispose())
