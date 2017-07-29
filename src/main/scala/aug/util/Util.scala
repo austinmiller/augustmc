@@ -10,9 +10,6 @@ import java.util.jar.{Attributes, JarEntry, JarInputStream}
 import java.util.regex.Pattern
 
 import aug.profile.ConfigManager
-import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
-import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.IOUtils
 import org.reflections.Reflections
@@ -23,39 +20,6 @@ import org.slf4j.LoggerFactory
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
-
-
-object JsonUtil {
-  val mapper = new ObjectMapper() with ScalaObjectMapper
-  mapper.registerModule(DefaultScalaModule)
-  mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-
-  def toJson(value: Map[Symbol, Any]): String = {
-    toJson(value map { case (k,v) => k.name -> v})
-  }
-
-  def toJson(value: Any): String = {
-    mapper.writeValueAsString(value)
-  }
-
-  def toJson(out: OutputStream, value: Any) = {
-    mapper.writeValue(out,value)
-  }
-
-  def prettyJson(value: Any): String = {
-    mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value)
-  }
-
-  def toMap[V](json:String)(implicit m: Manifest[V]) = fromJson[Map[String,V]](json)
-
-  def fromJson[T](in: InputStream)(implicit m : Manifest[T]): T = {
-    mapper.readValue[T](in)
-  }
-
-  def fromJson[T](json: String)(implicit m : Manifest[T]): T = {
-    mapper.readValue[T](json)
-  }
-}
 
 object TryWith {
   def apply[C <: Closeable, R](resource: => C)(f: C => R): Try[R] =
