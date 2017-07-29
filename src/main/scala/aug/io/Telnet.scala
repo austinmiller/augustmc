@@ -3,6 +3,7 @@ package aug.io
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.Inflater
 
 import aug.profile._
@@ -46,9 +47,9 @@ case class OptionUnknown(unknownCode: Byte) extends TelnetOption(unknownCode,"UN
 
 
 object Telnet {
-  val log = Logger(LoggerFactory.getLogger(Telnet.getClass))
+  private val log = Logger(LoggerFactory.getLogger(Telnet.getClass))
 
-  val telnetCommands : Map[Byte,TelnetCommand] = Map(
+  private val telnetCommands : Map[Byte,TelnetCommand] = Map(
     TelnetEsc.code -> TelnetEsc,
     TelnetSE.code -> TelnetSE,
     TelnetSB.code -> TelnetSB,
@@ -58,7 +59,7 @@ object Telnet {
     TelnetDont.code -> TelnetDont,
     TelnetIac.code -> TelnetIac)
 
-  val options : Map[Byte, TelnetOption] = Map(
+  private val options : Map[Byte, TelnetOption] = Map(
     OptionEcho.code -> OptionEcho,
     OptionType.code -> OptionType,
     OptionWinSize.code -> OptionWinSize,
@@ -69,12 +70,14 @@ object Telnet {
     OptionGmcp.code -> OptionGmcp
   )
 
-  val CHARSET			= Charset.forName("US-ASCII")
+  private val CHARSET			= Charset.forName("US-ASCII")
 
-  val COLOR_DEFAULT	= 0
+  private val COLOR_DEFAULT	= 0
 
-  val TELQUAL_IS		= 0
-  val TELQUAL_SEND	= 1
+  private val TELQUAL_IS		= 0
+  private val TELQUAL_SEND	= 1
+
+  private val idGenerator = new AtomicLong()
 }
 
 class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
@@ -84,6 +87,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   val url = profileConfig.telnetConfig.host
   val port = profileConfig.telnetConfig.port
+  val id = Telnet.idGenerator.incrementAndGet()
 
   private val inflater = new Inflater()
   private val inflateBuffer = ByteBuffer.allocate(1<<16)
@@ -99,7 +103,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   override def close(): Unit = {
     super.close()
-    profile.offer(TelnetDisconnect())
+    profile.offer(TelnetDisconnect(id))
   }
 
   override def connect(): Unit = {
@@ -114,10 +118,10 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   override def finishConnect(): Unit = {
     super.finishConnect()
     log.info(s"finished connect to $url:$port, closed ==")
-    if(!isClosed) profile.offer(TelnetConnect())
+    if(!isClosed) profile.offer(TelnetConnect(id, url, port))
   }
 
-  override def quickConnect(): Unit = if(!isClosed) profile.offer(TelnetConnect())
+  override def quickConnect(): Unit = if(!isClosed) profile.offer(TelnetConnect(id, url, port))
 
   private def handleByte(c: Byte): Unit = {
     val v : Byte = (0x00FF & c).toByte
@@ -320,4 +324,6 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   override def error(msg: String): Unit = {
     profile.offer(TelnetError(msg))
   }
+
+  override def toString: String = s"Telnet [$id, $url:$port]"
 }

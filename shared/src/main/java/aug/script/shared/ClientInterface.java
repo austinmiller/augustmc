@@ -150,8 +150,11 @@ public interface ClientInterface {
      * <p>This is called when the event handler is told that we connected to the server.  Since this
      * is all asynchronous, it is possible that it is no longer true by the time to client is
      * receiving this call.</p>
+     *
+     * <p>The id is a monotonically increasing number which is uniquely correlated with each telnet
+     * attept.  The id cannot be the same on subsequent onConnects unless the application was restarted.</p>
      */
-    void onConnect();
+    void onConnect(long id, String url, int port);
 
     /**
      * <p>This is called when the event handler is told that a connection was terminated.  This could
@@ -160,6 +163,11 @@ public interface ClientInterface {
      *
      * <p>It's also possible that the disconnect was for an older connection and that the application is
      * still currently connected to the server.</p>
+     *
+     * <p>The id is a monotonically increasing number which is uniquely correlated with each telnet
+     * attempt.  The id cannot be the same on subsequent onDisconnects unless the application was restarted.
+     * If an onDisconnect is called with id == a and onConnect was previously called with id == b, where b>a,
+     * then it's possible that the application is still connected to the server.</p>
      */
-    void onDisconnect();
+    void onDisconnect(long id);
 }

@@ -138,10 +138,10 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
 
   override def init(profile: ProfileInterface, reloadData: ReloadData): Unit =
     execute(() => client.init(profile, reloadData))
-  override def onConnect(): Unit = execute(() => client.onConnect())
+  override def onConnect(id: Long, url: String, port: Int): Unit = execute(() => client.onConnect(id, url, port))
   override def handleLine(lineNum: Long, line: String): Boolean = execute(client.handleLine(lineNum, line))
   override def handleFragment(s: String): Unit = execute(() => client.handleFragment(s))
-  override def onDisconnect(): Unit = execute(() => client.onDisconnect())
+  override def onDisconnect(id: Long): Unit = execute(() => client.onDisconnect(id))
   override def handleGmcp(s: String): Unit = execute(() => client.handleGmcp(s))
   override def handleCommand(s: String): Boolean = execute(client.handleCommand(s))
 }

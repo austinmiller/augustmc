@@ -47,8 +47,8 @@ private[profile] object EventId {
 
 case class CloseProfile() extends AbstractProfileEvent(Int.MinValue, EventId.nextId)
 
-case class TelnetConnect() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
-case class TelnetDisconnect() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class TelnetConnect(id: Long, url: String, port: Int) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class TelnetDisconnect(id: Long) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class ProfileLog(on: Boolean, color: Boolean) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
@@ -140,22 +140,22 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       try {
         val event = threadQueue.take()
         event match {
-          case TelnetConnect() =>
+          case TelnetConnect(id, url, port) =>
             addLine(Util.colorCode("0") + "--connected--")
-            slog.info(s"connected")
+            slog.info(s"connected $telnet")
 
-            client.foreach(_.onConnect())
+            client.foreach(_.onConnect(id, url, port))
 
           case TelnetError(data) =>
             slog.info(s"telnet error: $data")
 
-          case TelnetDisconnect() =>
+          case TelnetDisconnect(id) =>
             synchronized {
               addLine(Util.colorCode("0") + "--disconnected--")
               slog.info(s"received disconnect command")
             }
 
-            client.foreach(_.onDisconnect())
+            client.foreach(_.onDisconnect(id))
 
           case TelnetRecv(data) => processText(data)
 
@@ -172,7 +172,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             }
 
           case CloseProfile() =>
-            closeQuietly(telnet.foreach(_.close))
+            closeQuietly(telnet.foreach(_.close()))
             closeQuietly(client.foreach(_.shutdown()))
             closeQuietly(mongo.foreach(_.close()))
             closeQuietly(textLogger.foreach(_.close()))
@@ -186,11 +186,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 telnet = Some(new Telnet(this, profileConfig))
                 slog.info(f"starting connection to ${profileConfig.telnetConfig.host}:" +
                   f"${profileConfig.telnetConfig.port}")
-                telnet.foreach(_.connect)
+                telnet.foreach(_.connect())
             }
 
           case ProfileDisconnect() =>
-            telnet.foreach(_.close)
+            telnet.foreach(_.close())
             telnet = None
 
           case ClientStart() =>

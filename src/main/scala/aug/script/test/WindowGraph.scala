@@ -3,8 +3,8 @@ package aug.script.test
 import aug.script.shared._
 
 class WindowGraph extends ClientInterface {
-  var profile : ProfileInterface = null
-  var com : TextWindowInterface = null
+  var profile : ProfileInterface = _
+  var com : TextWindowInterface = _
 
   override def init(profileInterface: ProfileInterface, reloadData: ReloadData): Unit = {
     profile = profileInterface
@@ -43,7 +43,11 @@ class WindowGraph extends ClientInterface {
 
   override def handleCommand(cmd: String): Boolean = { false }
 
-  override def onConnect(): Unit = {}
+  override def onConnect(id: Long, url: String, port: Int): Unit = {
+    println("connected")
+  }
 
-  override def onDisconnect(): Unit = {}
+  override def onDisconnect(id: Long): Unit = {
+    println("disconnected")
+  }
 }
