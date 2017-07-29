@@ -23,4 +23,11 @@ class ProfileProxy(profile: Profile) extends ProfileInterface {
   override def getClientDir: File = ConfigManager.getClientDir(profile.name)
   override def logText(log: Boolean): Unit = offer(ProfileLog(log, false))
   override def logColor(log: Boolean): Unit = offer(ProfileLog(log, true))
+  override def connect(): Unit = profile.connect()
+  override def disconnect(): Unit = profile.disconnect()
+  override def reconnect(): Unit = profile.reconnect()
+  override def closeProfile(): Unit = profile.close()
+  override def printException(t: Throwable): Unit = profile.handleClientException(t)
+  override def clientStop(): Unit = profile.clientStop()
+  override def clientRestart(): Unit = profile.clientRestart()
 }
