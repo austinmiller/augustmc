@@ -20,7 +20,7 @@ class ProfileProxy(profile: Profile) extends ProfileInterface {
   override def getWindowNames: util.List[String] = profile.getWindowNames
   override def createTextWindow(name: String): TextWindowInterface = profile.createTextWindow(name)
   override def getTextWindow(name: String): TextWindowInterface = profile.getTextWindow(name)
-  override def getConfigDir: File = ConfigManager.getClientDir(profile.name)
+  override def getClientDir: File = ConfigManager.getClientDir(profile.name)
   override def logText(log: Boolean): Unit = offer(ProfileLog(log, false))
   override def logColor(log: Boolean): Unit = offer(ProfileLog(log, true))
 }
