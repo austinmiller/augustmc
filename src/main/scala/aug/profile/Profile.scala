@@ -64,8 +64,7 @@ case class ProfileDisconnect(minor: Long = EventId.nextId) extends AbstractProfi
 case class ClientStart(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
 case class ClientStop(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
 
-class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends ProfileInterface
-  with AutoCloseable {
+class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends AutoCloseable {
   import Profile.log
   import Util.Implicits._
 
@@ -207,7 +206,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               case Success(script) =>
                 this.client = Some(script)
                 Try {
-                  script.init(this, clientReloadData)
+                  script.init(new ProfileProxy(this), clientReloadData)
                 } match {
                   case Failure(e) =>
                     slog.error(s"profile $name: failed to init client, won't autostart, ${e.getMessage}")
@@ -427,18 +426,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   /**
     * <p><STRONG>This should *only* be called by the client.</STRONG></p>
-   */
-  override def send(cmds: String): Unit = offer(SendData(cmds))
-
-  /**
-    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
     */
-  override def sendSilently(cmds: String): Unit = offer(SendData(cmds, true))
-
-  /**
-    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
-    */
-  override def setWindowGraph(windowReference: WindowReference): java.lang.Boolean = {
+  private[profile] def setWindowGraph(windowReference: WindowReference): java.lang.Boolean = {
 
     @tailrec
     def getNames(windows: List[WindowReference], names: List[String] = List.empty): List[String] = {
@@ -508,7 +497,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   /**
     * <p><STRONG>This should *only* be called by the client.</STRONG></p>
     */
-  override def getWindowNames: util.List[String] = {
+  private[profile] def getWindowNames: util.List[String] = {
     import scala.collection.JavaConverters._
     windows.keys.toList.asJava
   }
@@ -516,7 +505,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   /**
     * <p><STRONG>This should *only* be called by the client.</STRONG></p>
     */
-  override def createTextWindow(name: String): TextWindowInterface = {
+  private[profile] def createTextWindow(name: String): TextWindowInterface = {
     windows.getOrElseUpdate(name, {
       val sta = new SplittableTextArea(true)
       sta.setActiveFont(profileConfig.consoleWindow.font.toFont)
@@ -527,26 +516,9 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   /**
     * <p><STRONG>This should *only* be called by the client.</STRONG></p>
     */
-  override def getTextWindow(name: String): TextWindowInterface = {
+  private[profile] def getTextWindow(name: String): TextWindowInterface = {
     windows.getOrElse(name, throw new RuntimeException(s"no window found with name $name"))
   }
-
-  /**
-    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
-    */
-  override def getConfigDir: File = {
-    ConfigManager.getClientDir(name)
-  }
-
-  /**
-    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
-    */
-  override def logText(log: Boolean): Unit = offer(ProfileLog(log, false))
-
-  /**
-    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
-    */
-  override def logColor(log: Boolean): Unit = offer(ProfileLog(log, true))
 }
 
 object Profile {
