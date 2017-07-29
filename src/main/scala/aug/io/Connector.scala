@@ -14,11 +14,12 @@ import scala.collection.JavaConverters._
 import scala.util.{Failure, Try}
 
 trait Connector {
-  def select : Unit
-  def finishConnect : Unit
-  def read : Unit
-  def write : Unit
-  def address : InetSocketAddress
+  def quickConnect(): Unit // the connector was able to connect without blocking
+  def select(): Unit
+  def finishConnect(): Unit
+  def read(): Unit
+  def write(): Unit
+  def address: InetSocketAddress
   def setSocketChannel(channel: SocketChannel) : Unit
   def error(msg: String) : Unit
 }
@@ -30,7 +31,7 @@ object Connector {
 abstract class AbstractConnection(val address: InetSocketAddress) extends Connector with AutoCloseable {
 
   val log = Connector.log
-  var channel : SocketChannel = null
+  var channel : SocketChannel = _
   val closed = new AtomicBoolean(false)
   val in = ByteBuffer.allocate(2<<20)
   val queue = new ConcurrentLinkedQueue[Array[Byte]]()
@@ -41,9 +42,9 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
   override def close() : Unit = {
     if(!closed.compareAndSet(false,true)) return
 
-    queue.clear
+    queue.clear()
     Try {
-      if(channel != null) channel.close
+      if(channel != null) channel.close()
     } match {
       case Failure(e) => log.warn("failed to close socket",e)
       case _ =>
@@ -51,27 +52,28 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
     log.info("closed socket")
   }
 
-  def connect = {
+  def connect(): Unit = {
     Try {
       ConnectionManager.register(this)
     } match {
       case Failure(e) =>
         log.error("error registering socket",e)
         error(e.getMessage)
-        close
+        close()
       case _ =>
     }
   }
 
-  override def finishConnect : Unit = {
+  override def finishConnect() : Unit = {
     Try {
       if(isClosed) throw new IOException("closed")
+      channel.finishConnect()
       if(!channel.isOpen || !channel.isConnected) throw new IOException("channel is not open or connected")
     } match {
       case Failure(e) =>
         log.error("failed to finish connection",e)
         error(e.getMessage)
-        close
+        close()
       case _ =>
     }
   }
@@ -89,7 +91,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
 
   protected def handleIncoming(bytes: Array[Byte]) : Unit
 
-  override def read : Unit = {
+  override def read() : Unit = {
     Try {
       in.clear
 
@@ -105,14 +107,14 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
       System.arraycopy(in.array(),0,copy,0,copy.length)
       handleIncoming(copy)
     } match {
-      case Failure(e: IOException) => {
+      case Failure(e: IOException) =>
         log.info("connection reset by peer")
-        close
-      }
-      case Failure(e) => {
-        log.error("error on read, closing",e)
-        close
-      }
+        close()
+
+      case Failure(e) =>
+        log.error("error on read, closing", e)
+        close()
+
       case _ =>
     }
   }
@@ -134,10 +136,10 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
         if(written == 0) return
       }
     } match {
-      case Failure(e) => {
+      case Failure(e) =>
         log.error("error on write, closing",e)
-        close
-      }
+        close()
+
       case _ =>
     }
   }
@@ -145,7 +147,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
 }
 
 trait Server {
-  def accept : Unit
+  def accept() : Unit
   def setServerSocketChannel(channel: ServerSocketChannel)
   def address : InetSocketAddress
 }
@@ -156,39 +158,51 @@ object ConnectionManager extends AutoCloseable with Runnable  {
 
   private val closed = new AtomicBoolean(false)
   private val selector : Selector = Selector.open
-  private val thread	= new Thread(this, "TelnetManager");
+  private val thread	= new Thread(this, "TelnetManager")
   private val connectors  = new scala.collection.mutable.ListBuffer[Connector]
 
   def register(connector: Connector) : Unit = register(connector, None)
 
   def register(connector: Connector, channel: Option[SocketChannel]): Unit = {
-    val ops = if(channel.isEmpty) SelectionKey.OP_READ | SelectionKey.OP_WRITE | SelectionKey.OP_CONNECT else
-      SelectionKey.OP_READ | SelectionKey.OP_WRITE
-    val ch = channel.getOrElse { SocketChannel.open(connector.address) }
+    def setProps(ch: SocketChannel): Unit = {
+      ch.configureBlocking(false)
+      ch.socket().setSendBufferSize(0x100000) // 1Mb
+      ch.socket().setReceiveBufferSize(0x100000) // 1Mb
+      ch.socket().setKeepAlive(true)
+      ch.socket().setReuseAddress(true)
+      ch.socket().setSoLinger(false, 0)
+      ch.socket().setSoTimeout(0)
+      ch.socket().setTcpNoDelay(true)
+    }
 
-    ch.configureBlocking(false)
-    ch.socket().setSendBufferSize(0x100000) // 1Mb
-    ch.socket().setReceiveBufferSize(0x100000) // 1Mb
-    ch.socket().setKeepAlive(true)
-    ch.socket().setReuseAddress(true)
-    ch.socket().setSoLinger(false, 0)
-    ch.socket().setSoTimeout(0)
-    ch.socket().setTcpNoDelay(true)
+    val readWrite = SelectionKey.OP_READ | SelectionKey.OP_WRITE
+    channel.foreach(setProps)
+    val (ch, ops) = channel.map((_, readWrite)).getOrElse {
+      val sc = SocketChannel.open()
+      setProps(sc)
+
+      if (sc.connect(connector.address)) {
+        connector.quickConnect()
+        (sc, readWrite)
+      } else {
+        (sc, readWrite | SelectionKey.OP_CONNECT)
+      }
+    }
 
     connector.setSocketChannel(ch)
 
     connectors += connector
-    ch.register(selector, ops, connector);
+    ch.register(selector, ops, connector)
 
     if( log.underlying.isDebugEnabled) {
       selector.keys.asScala.foreach { sk => log.debug("class={}", sk.attachment.getClass.getCanonicalName) }
     }
 
-    log.debug("connector registered: {}", ch);
+    log.debug("connector registered: {}", ch)
   }
 
   def register(server: Server) = {
-    val channel = ServerSocketChannel.open
+    val channel = ServerSocketChannel.open()
     channel.configureBlocking(false)
     channel.socket().setReuseAddress(true)
     channel.socket.setSoTimeout(0)
@@ -196,9 +210,9 @@ object ConnectionManager extends AutoCloseable with Runnable  {
 
     server.setServerSocketChannel(channel)
 
-    channel.register(selector,SelectionKey.OP_ACCEPT,server)
+    channel.register(selector, SelectionKey.OP_ACCEPT, server)
 
-    log.debug("server registered: {}",server)
+    log.debug("server registered: {}", server)
   }
 
   def start() : Unit = {
@@ -207,27 +221,23 @@ object ConnectionManager extends AutoCloseable with Runnable  {
   }
 
   override def run() : Unit = {
-    while(closed.get != true && selector.isOpen) {
+    while(!closed.get && selector.isOpen) {
       try {
-        selectCallback
+        selectCallback()
         selector.selectNow
-        processKeys
+        processKeys()
         Thread.sleep(50)
       } catch {
         case e: InterruptedException => log.info("thread interrupted")
         case e: Throwable => log.error("exception caught during selection", e)
       }
     }
-    selector.close
+    selector.close()
   }
 
-  private def selectCallback = {
-    connectors foreach {_.select}
-  }
+  private def selectCallback(): Unit = connectors.foreach(_.select())
 
-  private def processKeys = {
-    selector.selectedKeys.asScala foreach { processKey(_) }
-  }
+  private def processKeys(): Unit = selector.selectedKeys.asScala.foreach(processKey)
 
   private def processKey(key : SelectionKey): Unit = {
     if(!key.isValid) {
@@ -235,48 +245,49 @@ object ConnectionManager extends AutoCloseable with Runnable  {
       return
     }
 
-    if(key.isAcceptable) key.attachment.asInstanceOf[Server].accept
-    if(key.isConnectable) key.attachment.asInstanceOf[Connector].finishConnect
+    if(key.isAcceptable) key.attachment.asInstanceOf[Server].accept()
+    if(key.isConnectable) key.attachment.asInstanceOf[Connector].finishConnect()
 
     if(key.isReadable) {
       Try {
-        key.attachment.asInstanceOf[Connector].read
+        key.attachment.asInstanceOf[Connector].read()
       } match {
-        case Failure(e) => {
+        case Failure(e) =>
           log.info("closing {}", key.attachment)
-          key.cancel
+          key.cancel()
           return
-        }
+
         case _ =>
       }
     }
 
     if(key.isValid && key.isWritable) {
       Try {
-        key.attachment.asInstanceOf[Connector].write
+        key.attachment.asInstanceOf[Connector].write()
       } match {
-        case Failure(e) => {
+        case Failure(e) =>
           log.info("closing {}", key.attachment)
-          key.cancel
+          key.cancel()
           return
-        }
+
         case _ =>
       }
     }
   }
 
   override def close(): Unit = {
-    if(!closed.compareAndSet(false,true)) return
-    Try {
-      thread.interrupt
-      thread.join(10*1000)
-      if(thread.isAlive) throw new IOException("join timed out")
-    } match {
-      case Failure(e) => {
-        log.error("fatal error closing ConnectionManager", e);
-        System.exit(-1);
+    if(closed.compareAndSet(false,true)) {
+      Try {
+        thread.interrupt()
+        thread.join(10 * 1000)
+        if (thread.isAlive) throw new IOException("join timed out")
+      } match {
+        case Failure(e) =>
+          log.error("fatal error closing ConnectionManager", e)
+          System.exit(-1)
+
+        case _ =>
       }
-      case _ =>
     }
   }
 

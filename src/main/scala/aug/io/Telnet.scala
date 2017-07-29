@@ -22,7 +22,7 @@ case object SubNegotiation extends TelnetState
 
 sealed abstract class TelnetCommand(val code: Byte, val text: String)
 
-case class TelnetUnknown(val unknownCode: Byte) extends TelnetCommand(unknownCode,"UNKNOWN")
+case class TelnetUnknown(unknownCode: Byte) extends TelnetCommand(unknownCode,"UNKNOWN")
 case object TelnetEsc extends TelnetCommand(27.toByte,"ESC")
 case object TelnetSE extends TelnetCommand(240.toByte,"SE")
 case object TelnetSB extends TelnetCommand(250.toByte,"SB")
@@ -42,7 +42,7 @@ case object OptionMccp2 extends TelnetOption(86.toByte,"MCCP2")
 case object OptionAard102 extends TelnetOption(102.toByte,"AARD102")
 case object OptionAtcp extends TelnetOption(200.toByte,"ATCP")
 case object OptionGmcp extends TelnetOption(201.toByte,"GMCP")
-case class OptionUnknown(val unknownCode: Byte) extends TelnetOption(unknownCode,"UNKNOWN")
+case class OptionUnknown(unknownCode: Byte) extends TelnetOption(unknownCode,"UNKNOWN")
 
 
 object Telnet {
@@ -69,18 +69,18 @@ object Telnet {
     OptionGmcp.code -> OptionGmcp
   )
 
-  val CHARSET			= Charset.forName("US-ASCII");
+  val CHARSET			= Charset.forName("US-ASCII")
 
-  val COLOR_DEFAULT	= 0;
+  val COLOR_DEFAULT	= 0
 
-  val TELQUAL_IS		= 0;
-  val TELQUAL_SEND	= 1;
+  val TELQUAL_IS		= 0
+  val TELQUAL_SEND	= 1
 }
 
 class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   AbstractConnection(new InetSocketAddress(profileConfig.telnetConfig.host,
     profileConfig.telnetConfig.port)) {
-  import Telnet.log
+  override val log = Telnet.log
 
   val url = profileConfig.telnetConfig.host
   val port = profileConfig.telnetConfig.port
@@ -92,35 +92,37 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   private var compressed = false
   private var state : TelnetState = Stream
   private var command : TelnetCommand = TelnetUnknown(0)
-  private var option : TelnetOption = new OptionUnknown(0)
+  private var option : TelnetOption = OptionUnknown(0)
   private var subMessage = new StringBuilder
-  private var zipinput : Array[Byte] = null
+  private var zipinput : Array[Byte] = _
   private var rawBuffer = ByteBuffer.allocate(1<<16)
-  private var marker = 0
 
-  override def close = {
-    super.close
+  override def close(): Unit = {
+    super.close()
     profile.offer(TelnetDisconnect())
   }
 
-  override def connect = {
+  override def connect(): Unit = {
     log.info(f"connecting to $url:$port")
-    super.connect
+    super.connect()
   }
 
   private def constructCommand(command: TelnetCommand, option: TelnetOption) : Array[Byte] = {
     Array(TelnetIac.code, command.code, option.code)
   }
 
-  override def finishConnect : Unit = {
-    super.finishConnect
+  override def finishConnect(): Unit = {
+    super.finishConnect()
+    log.info(s"finished connect to $url:$port, closed ==")
     if(!isClosed) profile.offer(TelnetConnect())
   }
 
-  private def handleByte(c: Byte) : Unit = {
+  override def quickConnect(): Unit = if(!isClosed) profile.offer(TelnetConnect())
+
+  private def handleByte(c: Byte): Unit = {
     val v : Byte = (0x00FF & c).toByte
 
-    if (!postBuffer.hasRemaining()) post
+    if (!postBuffer.hasRemaining) post()
 
     state match {
 
@@ -134,14 +136,14 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
         if(TelnetSE.code == v) {
           state = Stream
-          handleSubNegotiation
+          handleSubNegotiation()
         } else {
           state = Option
         }
 
       case Option =>
-        option = Telnet.options.get(v).getOrElse { new OptionUnknown(v)}
-        handleOption
+        option = Telnet.options.getOrElse(v, OptionUnknown(v))
+        handleOption()
 
       case SubNegotiation =>
         if(TelnetIac.code == v) {
@@ -150,7 +152,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
     }
   }
 
-  private def handleDoOption = {
+  private def handleDoOption(): Unit = {
     log.debug("recv: IAC {} {}", command.text, option.text)
     option match {
       case OptionType => send(TelnetWill, OptionType)
@@ -160,18 +162,17 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   }
 
-  override def handleIncoming(bytes: Array[Byte]) : Unit = {
+  override def handleIncoming(bytes: Array[Byte]): Unit = {
     log.trace("{} incoming bytes", bytes.length)
 
     inflate(bytes)
 
-    handleIncomingLoop
+    handleIncomingLoop()
 
-    post
-
+    post()
   }
 
-  private def handleIncomingLoop() : Unit = {
+  private def handleIncomingLoop(): Unit = {
     while(true) {
       while(rawBuffer.hasRemaining) {
         handleByte(rawBuffer.get)
@@ -182,24 +183,26 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
         return
       }
 
-      readRaw
+      readRaw()
     }
   }
 
-  private def handleOption : Unit = {
+  private def handleOption(): Unit = {
     command match {
       case TelnetSB => state = SubNegotiation
       case TelnetWill =>
         state = Stream
-        handleWillOption
+        handleWillOption()
+
       case TelnetDo =>
         state = Stream
-        handleDoOption
+        handleDoOption()
+
       case _ => state = Stream
     }
   }
 
-  private def handleSubNegotiation() = {
+  private def handleSubNegotiation(): Unit = {
     val sm = subMessage.toString
     subMessage = new StringBuilder
     log.trace("subMessage {}", sm)
@@ -217,16 +220,16 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
     }
   }
 
-  private def handleWillOption = {
-    log.debug("recv: IAC {} {}", command.text,option.text);
+  private def handleWillOption(): Unit = {
+    log.debug("recv: IAC {} {}", command.text,option.text)
     option match {
-      case OptionEcho => send(TelnetDo,OptionEcho)
+      case OptionEcho => send(TelnetDo ,OptionEcho)
       case OptionMccp2 =>
         if (profileConfig.telnetConfig.mccpEnabled) {
           send(TelnetDo,OptionMccp2)
         } else send(TelnetDont, OptionMccp2)
 
-      case OptionAtcp => send(TelnetDo,OptionAtcp)
+      case OptionAtcp => send(TelnetDo, OptionAtcp)
       case OptionGmcp =>
         if (profileConfig.telnetConfig.gmcpEnabled) {
           send(TelnetDo, OptionGmcp)
@@ -242,17 +245,17 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   }
 
-  private def inflate(bytes: Array[Byte]) : Unit = {
-    if(!compressed) {
+  private def inflate(bytes: Array[Byte]): Unit = {
+    if (!compressed) {
       rawBuffer = ByteBuffer.wrap(bytes)
     } else {
       zipinput = Util.concatenate(zipinput,bytes)
-      readRaw
+      readRaw()
     }
   }
 
-  private def post : Unit = {
-    if(postBuffer.position == 0) return
+  private def post(): Unit = {
+    if (postBuffer.position == 0) return
 
     val msg = new String(postBuffer.array, 0, postBuffer.position)
 
@@ -260,7 +263,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
     postBuffer.position(0)
   }
 
-  private def readRaw : Unit = {
+  private def readRaw(): Unit = {
     log.trace("zipinput.length == {}",zipinput.length)
 
     inflater.setInput(zipinput)
@@ -274,11 +277,11 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
       inflateBuffer.limit(read)
       rawBuffer = inflateBuffer.slice
     } match {
-      case Failure(e) => {
+      case Failure(e) =>
         log.error("failed on inflate",e)
-        close
+        close()
         return
-      }
+
       case _ =>
     }
 
@@ -288,7 +291,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
     log.trace("readRaw: {}",remaining)
   }
 
-  override def select = {}
+  override def select(): Unit = {}
 
   def send(command: TelnetCommand, option: TelnetOption): Unit = {
     log.debug("send: IAC {} {}", command.text, option.text)
@@ -311,7 +314,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
     rawBuffer = ByteBuffer.allocate(0)
 
-    readRaw
+    readRaw()
   }
 
   override def error(msg: String): Unit = {
