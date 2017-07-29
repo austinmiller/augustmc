@@ -10,7 +10,7 @@ import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
 import aug.gui.{MainWindow, ProfilePanel, SplittableTextArea}
-import aug.io.{ColorlessTextLogger, Mongo, Telnet, TextLogger}
+import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
 import aug.script.shared._
 import aug.script.{Client, ScriptLoader}
 import aug.util.Util
@@ -68,10 +68,9 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   import Profile.log
   import Util.Implicits._
 
-  val slog = mainWindow.slog
-
   val profilePanel = new ProfilePanel(mainWindow, this)
   val name = profileConfig.name
+  val slog = new PrefixSystemLog(s"[$name]: ", mainWindow.slog)
   mainWindow.tabbedPane.addProfile(name, profilePanel)
 
   private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
@@ -143,17 +142,17 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         event match {
           case TelnetConnect() =>
             addLine(Util.colorCode("0") + "--connected--")
-            slog.info(s"profile $name connected")
+            slog.info(s"connected")
 
             client.foreach(_.onConnect())
 
           case TelnetError(data) =>
-            slog.info(s"profile $name: telnet error: $data")
+            slog.info(s"telnet error: $data")
 
           case TelnetDisconnect() =>
             synchronized {
               addLine(Util.colorCode("0") + "--disconnected--")
-              slog.info(s"profile $name: received disconnect command")
+              slog.info(s"received disconnect command")
             }
 
             client.foreach(_.onDisconnect())
@@ -182,10 +181,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case ProfileConnect() =>
             telnet match {
-              case Some(_) => slog.error(s"profile $name: already connected")
+              case Some(_) => slog.error(s"already connected")
               case None =>
                 telnet = Some(new Telnet(this, profileConfig))
-                slog.info(f"profile $name starting connection to ${profileConfig.telnetConfig.host}:" +
+                slog.info(f"starting connection to ${profileConfig.telnetConfig.host}:" +
                   f"${profileConfig.telnetConfig.port}")
                 telnet.foreach(_.connect)
             }
@@ -197,22 +196,22 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case ClientStart() =>
             Try {
               client match {
-                case Some(_) => throw new RuntimeException(s"profile $name failed to init client, already has a client")
+                case Some(_) => throw new RuntimeException(s"failed to init client, already has a client")
                 case None => ScriptLoader.constructScript(this, profileConfig)
               }
             } match {
               case Failure(e) =>
-                slog.error(f"profile $name: failed to init script: ${e.getMessage}")
-                log.error(f"profile $name: failed to init script", e)
+                slog.error(f"failed to init script: ${e.getMessage}")
+                log.error(f"failed to init script", e)
               case Success(script) =>
                 this.client = Some(script)
                 Try {
                   script.init(new ProfileProxy(this), clientReloadData)
                 } match {
                   case Failure(e) =>
-                    slog.error(s"profile $name: failed to init client, won't autostart, ${e.getMessage}")
+                    slog.error(s"failed to init client, won't autostart, ${e.getMessage}")
                     offer(ClientStop())
-                  case Success(_) => slog.info(s"profile $name: started client successfully")
+                  case Success(_) => slog.info(s"started client successfully")
                 }
             }
 
@@ -222,7 +221,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 client = None
                 clientReloadData = scr.shutdown()
               case None =>
-                slog.error(f"profile $name: no client to shutdown")
+                slog.error(f"no client to shutdown")
             }
 
           case SendData(cmds, silent) => sendNow(cmds, silent)
@@ -231,17 +230,17 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             if (!on && color && textLogger.isDefined) {
               closeQuietly(textLogger.foreach(_.close()))
               textLogger = None
-              slog.info(s"profile $name: no longer logging colored text")
+              slog.info(s"no longer logging colored text")
             } else if (on && color && textLogger.isEmpty) {
               textLogger = Some(new TextLogger(logDir))
-              slog.info(s"profile $name: logging color to $logDir")
+              slog.info(s"logging color to $logDir")
             } else if (!on && !color && colorlessTextLogger.isDefined) {
               closeQuietly(colorlessTextLogger.foreach(_.close()))
               colorlessTextLogger = None
-              slog.info(s"profile $name: no longer logging")
+              slog.info(s"no longer logging")
             } else if (on && !color && textLogger.isEmpty) {
               colorlessTextLogger = Some(new ColorlessTextLogger(logDir))
-              slog.info(s"profile $name: logging to $logDir")
+              slog.info(s"logging to $logDir")
             }
 
           case MongoStart() =>
@@ -258,16 +257,16 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         case to: TimeoutException => clientTimedOut()
         case e: Throwable =>
           log.error("event handling failure", e)
-          slog.error(s"profile $name: event handling failure: ${e.getMessage}")
+          slog.error(s"event handling failure: ${e.getMessage}")
       }
     }
-    slog.info(s"profile $name: event thread exiting")
+    slog.info(s"event thread exiting")
   }
 
   def offer(event: ProfileEvent): Unit = {
     if (!threadQueue.offer(event)) {
-      slog.error(f"profile $name: failed to offer event $event")
-      log.error(f"profile $name failed to offer event $event")
+      slog.error(f"failed to offer event $event")
+      log.error(f"failed to offer event $event")
     }
   }
 
@@ -292,14 +291,14 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   override def close(): Unit = {
     if(running.compareAndSet(true, false)) {
-      slog.info(s"profile $name: closing profile")
+      slog.info(s"closing profile")
       offer(CloseProfile())
       thread.join(profileConfig.javaConfig.clientTimeout + 500)
     }
   }
 
   def handleClientException(throwable: Throwable): Unit = {
-    slog.error(s"profile $name: received exception from client", throwable)
+    slog.error(s"received exception from client", throwable)
   }
 
   private def closeQuietly[T](f: => T): Unit = {
@@ -340,8 +339,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
     */
   private def clientTimedOut() : Unit = {
-    log.error(s"profile $name: script ran out of time to respond")
-    slog.error(s"profile $name: script ran out of time to respond")
+    log.error(s"script ran out of time to respond")
+    slog.error(s"script ran out of time to respond")
     offer(ClientStop())
 
     if (profileConfig.javaConfig.clientMode == "autostart") {
@@ -420,7 +419,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           if (!silent) echoCommand(cmd)
         }
 
-      case None => slog.info(s"profile $name: command ignored: $cmds")
+      case None => slog.info(s"command ignored: $cmds")
     }
 
   }
@@ -446,12 +445,12 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     val names = getNames(List(windowReference))
 
     if (names.exists(windows.get(_).isEmpty)) {
-      slog.error(s"profile $name: not every name in $names existed in ${windows.keys}")
+      slog.error(s"not every name in $names existed in ${windows.keys}")
       return false
     }
 
     if (!names.contains("console")) {
-      slog.error(s"profile $name: window graph did not contain windows console")
+      slog.error(s"window graph did not contain windows console")
       return false
     }
 
