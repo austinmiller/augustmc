@@ -3,7 +3,7 @@ package aug.script.shared;
 public class WindowReference {
     private final String name;
 
-    protected WindowReference() {
+    WindowReference() {
         this.name = "";
     }
 
