@@ -45,10 +45,10 @@ private[profile] object EventId {
   def nextId = next.incrementAndGet()
 }
 
-case class CloseProfile(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue, minor)
+case class CloseProfile() extends AbstractProfileEvent(Int.MinValue, EventId.nextId)
 
-case class TelnetConnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue + 1, minor)
-case class TelnetDisconnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(Int.MinValue + 1, minor)
+case class TelnetConnect() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class TelnetDisconnect() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class ProfileLog(on: Boolean, color: Boolean) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
@@ -59,10 +59,10 @@ case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nex
 case class TelnetRecv(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetGMCP(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 
-case class ProfileConnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
-case class ProfileDisconnect(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
-case class ClientStart(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
-case class ClientStop(minor: Long = EventId.nextId) extends AbstractProfileEvent(0, minor)
+case class ProfileConnect() extends AbstractProfileEvent(0, EventId.nextId)
+case class ProfileDisconnect() extends AbstractProfileEvent(0, EventId.nextId)
+case class ClientStart() extends AbstractProfileEvent(0, EventId.nextId)
+case class ClientStop() extends AbstractProfileEvent(0, EventId.nextId)
 
 class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends AutoCloseable {
   import Profile.log
@@ -141,7 +141,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       try {
         val event = threadQueue.take()
         event match {
-          case TelnetConnect(_) =>
+          case TelnetConnect() =>
             addLine(Util.colorCode("0") + "--connected--")
             slog.info(s"profile $name connected")
 
@@ -150,7 +150,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case TelnetError(data) =>
             slog.info(s"profile $name: telnet error: $data")
 
-          case TelnetDisconnect(_) =>
+          case TelnetDisconnect() =>
             synchronized {
               addLine(Util.colorCode("0") + "--disconnected--")
               slog.info(s"profile $name: received disconnect command")
@@ -172,7 +172,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               case None => sendNow(data, false)
             }
 
-          case CloseProfile(_) =>
+          case CloseProfile() =>
             closeQuietly(telnet.foreach(_.close))
             closeQuietly(client.foreach(_.shutdown()))
             closeQuietly(mongo.foreach(_.close()))
@@ -180,7 +180,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             closeQuietly(colorlessTextLogger.foreach(_.close()))
             mainWindow.tabbedPane.remove(profilePanel)
 
-          case ProfileConnect(_) =>
+          case ProfileConnect() =>
             telnet match {
               case Some(_) => slog.error(s"profile $name: already connected")
               case None =>
@@ -190,11 +190,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 telnet.foreach(_.connect)
             }
 
-          case ProfileDisconnect(_) =>
+          case ProfileDisconnect() =>
             telnet.foreach(_.close)
             telnet = None
 
-          case ClientStart(_) =>
+          case ClientStart() =>
             Try {
               client match {
                 case Some(_) => throw new RuntimeException(s"profile $name failed to init client, already has a client")
@@ -216,7 +216,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 }
             }
 
-          case ClientStop(_) =>
+          case ClientStop() =>
             client match {
               case Some(scr) =>
                 client = None
