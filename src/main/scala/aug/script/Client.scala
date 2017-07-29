@@ -18,8 +18,11 @@ object ScriptLoader {
   private val clientInterfaceT = classOf[ClientInterface]
 
   def constructScript(profile: Profile, profileConfig: ProfileConfig): Client = {
-    val classpath = profileConfig.javaConfig.classPath.map(new File(_).toURI.toURL)
+    val classpath: Array[URL] = profileConfig.javaConfig.classPath.map(new File(_).toURI.toURL)
     val mainClass = profileConfig.javaConfig.mainClass
+
+    log.info(s"will try to load $mainClass from classpath ${classpath.toList}")
+
     val scriptLoader = new ScriptLoader(classpath)
     val clientT = scriptLoader.loadClass(mainClass)
     if (!clientInterfaceT.isAssignableFrom(clientT)) {
@@ -27,6 +30,7 @@ object ScriptLoader {
     }
 
     val client = clientT.newInstance().asInstanceOf[ClientInterface]
+
     new Client(profile, profileConfig, client)
   }
 }
@@ -137,11 +141,11 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   }
 
   override def init(profile: ProfileInterface, reloadData: ReloadData): Unit =
-    execute(() => client.init(profile, reloadData))
-  override def onConnect(id: Long, url: String, port: Int): Unit = execute(() => client.onConnect(id, url, port))
+    execute(client.init(profile, reloadData))
+  override def onConnect(id: Long, url: String, port: Int): Unit = execute(client.onConnect(id, url, port))
   override def handleLine(lineNum: Long, line: String): Boolean = execute(client.handleLine(lineNum, line))
-  override def handleFragment(s: String): Unit = execute(() => client.handleFragment(s))
-  override def onDisconnect(id: Long): Unit = execute(() => client.onDisconnect(id))
-  override def handleGmcp(s: String): Unit = execute(() => client.handleGmcp(s))
+  override def handleFragment(s: String): Unit = execute(client.handleFragment(s))
+  override def onDisconnect(id: Long): Unit = execute(client.onDisconnect(id))
+  override def handleGmcp(s: String): Unit = execute(client.handleGmcp(s))
   override def handleCommand(s: String): Boolean = execute(client.handleCommand(s))
 }
