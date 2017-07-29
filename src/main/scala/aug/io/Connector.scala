@@ -3,17 +3,15 @@ package aug.io
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
 import java.nio.channels._
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
-import scala.collection.JavaConverters._
-import scala.util.control.NonFatal
-import scala.util.{Failure, Try}
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
 
+import scala.collection.JavaConverters._
+import scala.util.{Failure, Try}
 
 trait Connector {
   def select : Unit
@@ -108,7 +106,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
       handleIncoming(copy)
     } match {
       case Failure(e: IOException) => {
-        log.info("connection reset by peer",e)
+        log.info("connection reset by peer")
         close
       }
       case Failure(e) => {
@@ -210,14 +208,14 @@ object ConnectionManager extends AutoCloseable with Runnable  {
 
   override def run() : Unit = {
     while(closed.get != true && selector.isOpen) {
-      Try {
+      try {
         selectCallback
         selector.selectNow
         processKeys
         Thread.sleep(50)
-      } match {
-        case Failure(e) => log.error("exception caught during selection",e)
-        case _ =>
+      } catch {
+        case e: InterruptedException => log.info("thread interrupted")
+        case e: Throwable => log.error("exception caught during selection", e)
       }
     }
     selector.close
