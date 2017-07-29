@@ -10,7 +10,7 @@ import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
 import aug.gui.{MainWindow, ProfilePanel, SplittableTextArea}
-import aug.io.{ColorlessTextLogger, Telnet, TextLogger}
+import aug.io.{ColorlessTextLogger, Mongo, Telnet, TextLogger}
 import aug.script.shared._
 import aug.script.{Client, ScriptLoader}
 import aug.util.Util
@@ -52,6 +52,8 @@ case class TelnetDisconnect(minor: Long = EventId.nextId) extends AbstractProfil
 case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class ProfileLog(on: Boolean, color: Boolean) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class MongoStart() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class MongoStop() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 
 case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetRecv(data: String) extends AbstractProfileEvent(0, EventId.nextId)
@@ -66,7 +68,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   with AutoCloseable {
   import Profile.log
   import Util.Implicits._
-  import mainWindow.slog
+
+  val slog = mainWindow.slog
 
   val profilePanel = new ProfilePanel(mainWindow, this)
   val name = profileConfig.name
@@ -81,6 +84,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   private var telnet : Option[Telnet] = None
   private var client : Option[Client] = None
+  private var mongo : Option[Mongo] = None
   private var textLogger : Option[TextLogger] = None
   private var colorlessTextLogger : Option[ColorlessTextLogger] = None
   private var lineNum: Long = 0
@@ -106,6 +110,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   if (profileConfig.javaConfig.clientMode == "autostart") {
     offer(ClientStart())
+  }
+
+  if (profileConfig.mongoConfig.enabled) {
+    offer(MongoStart())
   }
 
   offer(ProfileLog(true, false))
@@ -236,6 +244,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               slog.info(s"profile $name: logging to $logDir")
             }
 
+          case MongoStart() =>
+            mongo = Some(new Mongo(this, profileConfig))
+
+          case MongoStop() =>
+            closeQuietly(mongo.foreach(_.close()))
+            mongo = None
+
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")
         }
@@ -254,6 +269,16 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       slog.error(f"profile $name: failed to offer event $event")
       log.error(f"profile $name failed to offer event $event")
     }
+  }
+
+
+  def mongoStart() = offer(MongoStart())
+
+  def mongoStop() = offer(MongoStop())
+
+  def mongoRestart() = {
+    offer(MongoStop())
+    offer(MongoStart())
   }
 
   def clientStart() = offer(ClientStart())

@@ -56,7 +56,7 @@ class GmcpPanel(profileConfigPanel: ProfileConfigPanel) extends JPanel {
   setLayout(new GridBagLayout)
   private val c = new GridBagConstraints()
 
-  val enabledBox = new EnabledBox
+  val enabledBox = new EnabledBox(profileConfigPanel.setDirty())
   val supportLabel = new JLabel("core.supports.set: ")
   val supportsField = new RegexTextField("", 15, profileConfigPanel.setDirty)
   supportsField.setToolTipText("If non-empty, will send contents as GMCP option 'core.supports.set'.  Example " +
@@ -321,11 +321,13 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
   val telnetConfigPanel = new TelnetConfigPanel(this)
   val javaConfigPanel = new JavaConfigPanel(settingsWindow, this)
   val uiConfigPanel = new UIConfigPanel(this)
+  val mongoConfigPanel = new MongoConfigPanel(this)
 
   val tabs = new JTabbedPane()
   tabs.addTab("telnet", telnetConfigPanel)
   tabs.addTab("java", javaConfigPanel)
   tabs.addTab("ui", uiConfigPanel)
+  tabs.addTab("mongo", mongoConfigPanel)
 
   tabs.setUI(new DarculaTabbedPaneUI() {
     override def paintFocusIndicator(g: Graphics, tabPlacement: Int, rects: Array[Rectangle], tabIndex: Int,
@@ -355,6 +357,12 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
 
     uiConfigPanel.commandLineConfigPanel.fontButton.setSelectedFont(profileConfig.commandLineFont)
     uiConfigPanel.consoleWindowConfigPanel.fontButton.setSelectedFont(profileConfig.consoleWindow.font)
+
+    mongoConfigPanel.enabledBox.setSelectionEnabled(profileConfig.mongoConfig.enabled)
+    mongoConfigPanel.userField.setText(profileConfig.mongoConfig.user)
+    mongoConfigPanel.passField.setText(profileConfig.mongoConfig.password)
+    mongoConfigPanel.dbField.setText(profileConfig.mongoConfig.db)
+    mongoConfigPanel.hostField.setText(profileConfig.mongoConfig.host)
   }
 
   def setDirty() : Unit = settingsWindow.setProfileDirty(profileConfig.name)
@@ -396,6 +404,13 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
       consoleWindow = WindowConfig(
         "console",
         font = uiConfigPanel.consoleWindowConfigPanel.fontButton.getSelectedFont
+      ),
+      mongoConfig = MongoConfig(
+        enabled = mongoConfigPanel.enabledBox.isSelectionEnabled,
+        user = mongoConfigPanel.userField.getText,
+        password = mongoConfigPanel.passField.getText,
+        db = mongoConfigPanel.dbField.getText,
+        host = mongoConfigPanel.hostField.getText
       )
     )
   }

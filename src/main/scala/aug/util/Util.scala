@@ -5,7 +5,7 @@ import java.awt.image.BufferedImage
 import java.awt.{Color, Font, GraphicsEnvironment}
 import java.io._
 import java.nio.ByteBuffer
-import java.util.concurrent.Executors
+import java.util.concurrent.{Callable, Executors}
 import java.util.jar.{Attributes, JarEntry, JarInputStream}
 import java.util.regex.Pattern
 
@@ -115,7 +115,23 @@ object Util {
     implicit def runnable(f: => Unit): Runnable = new Runnable() { def run() = f }
   }
 
-  val tp = Executors.newCachedThreadPool()
+  private val tp = Executors.newCachedThreadPool()
+
+  def time[T](f: => T): (Long, T) = {
+    val ms = System.currentTimeMillis()
+    val rv = f
+    (System.currentTimeMillis() - ms, rv)
+  }
+
+  def printTime[T](f: => T): T = {
+    val (ms,t) = time(f)
+    println(s"took $ms")
+    t
+  }
+
+  def run[T](f: => T) = tp.submit(new Callable[T] {
+    override def call(): T = f
+  })
 
   def invokeLater(f: () => Unit) = {
     tp.submit(new Runnable { def run = f() })
@@ -146,7 +162,6 @@ object Util {
   def version : String = s"$major.$minor"
 
   def isWindows : Boolean = System.getProperty("os.name").toLowerCase.contains("windows")
-
 
   def concatenate(args: Array[Byte]*) : Array[Byte] = {
     val length = args map { _.length } reduce { _ + _ }

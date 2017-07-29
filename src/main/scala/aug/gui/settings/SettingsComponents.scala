@@ -37,6 +37,15 @@ class RegexTextField(pattern: String, columns: Int, valueChangedCallback: () => 
   })
 }
 
+class PasswordField[T](columns: Int, valueChanged: => T) extends JPasswordField(columns) {
+  setMaximumSize(getPreferredSize)
+  getDocument.addDocumentListener(new DocumentListener {
+    override def insertUpdate(e: DocumentEvent): Unit = valueChanged
+    override def changedUpdate(e: DocumentEvent): Unit = valueChanged
+    override def removeUpdate(e: DocumentEvent): Unit = valueChanged
+  })
+}
+
 
 class FontChooser(profileConfigPanel: ProfileConfigPanel) extends ProfileDialog(profileConfigPanel, "choose font") {
   val fontList = new JList[String]()
@@ -80,12 +89,18 @@ class FontChooser(profileConfigPanel: ProfileConfigPanel) extends ProfileDialog(
   addKeyListener(kl)
 }
 
-class EnabledBox extends JComboBox[String](Array("disabled", "enabled")) {
-  def setSelectionEnabled(bool: Boolean) = {
+class EnabledBox[T](onSelection: => T) extends JComboBox[String](Array("disabled", "enabled")) {
+  def setSelectionEnabled(bool: String): Unit = setSelectionEnabled(bool.toBoolean)
+
+  def setSelectionEnabled(bool: Boolean): Unit = {
     if (bool) setSelectedItem("enabled") else setSelectedItem("disabled")
   }
 
   def isSelectionEnabled = getSelectedItem == "enabled"
+
+  addActionListener(new ActionListener {
+    override def actionPerformed(e: ActionEvent): Unit = onSelection
+  })
 }
 
 class FontChooserButton(profileConfigPanel: ProfileConfigPanel) extends JButton {
@@ -155,6 +170,10 @@ class GridPanel extends JPanel {
     add(comp, c)
   }
 
+  def margins(top: Int = 0, left: Int = 0, bot: Int = 0, right: Int = 0): Unit = {
+    c.insets = new Insets(top, left, bot, right)
+  }
+
   def fillHorizontal(x: Int, y: Int): Unit = {
     addToGrid(new JPanel, x, y, 100)
   }
@@ -167,5 +186,9 @@ class GridPanel extends JPanel {
     setBorder(BorderFactory.createTitledBorder(
       BorderFactory.createEtchedBorder(),
       title))
+  }
+
+  def setMargin(margin: Int): Unit = {
+    setBorder(BorderFactory.createEmptyBorder(margin, margin, margin, margin))
   }
 }

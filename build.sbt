@@ -22,7 +22,7 @@ libraryDependencies += "org.springframework" % "spring-context" % springVersion
 libraryDependencies += "org.springframework" % "spring-test" % springVersion
 libraryDependencies += "org.springframework" % "spring-jdbc" % springVersion
 
-libraryDependencies += "org.mongodb.scala" %% "mongo-scala-driver" % "1.1.1"
+libraryDependencies += "org.mongodb.scala" % "mongo-scala-driver_2.11" % "2.1.0"
 
 libraryDependencies += "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion
 libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
@@ -35,8 +35,8 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 
 libraryDependencies += "org.reflections" % "reflections" % "0.9.11"
 
-// for apple toolkit and ui
 libraryDependencies += "mrj" % "MRJToolkitStubs" % "1.0"
+
 
 lazy val root = (project in file(".")).dependsOn(shared).settings(commonSettings)
 lazy val shared = (project in file("shared")).settings(commonSettings)
