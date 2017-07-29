@@ -4,10 +4,6 @@ import java.util.concurrent.{Executors, TimeUnit}
 
 import aug.profile.{Profile, ProfileConfig}
 import aug.util.Util
-import org.bson.BsonType
-import org.mongodb.scala.bson.BsonValue
-import org.mongodb.scala.model.IndexOptions
-import org.mongodb.scala.model.Indexes._
 import org.mongodb.scala.model.IndexOptions
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase, Observable}
 
@@ -67,9 +63,6 @@ class Mongo (profile: Profile, profileConfig: ProfileConfig) extends AutoCloseab
   }
 
   def init() = {
-    import org.mongodb.scala.model.Aggregates._
-    import org.mongodb.scala.model.Accumulators._
-
     val user = profileConfig.mongoConfig.user
     val password = profileConfig.mongoConfig.password
     val host = profileConfig.mongoConfig.host
@@ -82,23 +75,6 @@ class Mongo (profile: Profile, profileConfig: ProfileConfig) extends AutoCloseab
 
     metrics = db.getCollection("metric")
     metrics.createIndex(ascending("timestamp"), IndexOptions().name("metric_ts_index")).results()
-
-    // first 1501278043304
-    // last 1501278046268
-    val (ms, _) = Util.time {
-      metrics.aggregate(List(group(null, sum("sum", "$value")))).printHeadResult()
-    }
-
-    println(s"took $ms")
-//
-//    val rand = new Random()
-//
-//    val (time, rv) = Util.time {
-//      val docs = for(i <- 0 to 1000000) yield Document("timestamp" -> System.currentTimeMillis(), "value" -> rand.nextInt(10))
-//      metrics.insertMany(docs).results()
-//    }
-//
-//    slog.info(s"took $time ms to insert docs")
   }
 
   override def close(): Unit = {
