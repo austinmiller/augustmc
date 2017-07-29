@@ -1,6 +1,5 @@
 package aug.io
 
-import java.util.Random
 import java.util.concurrent.{Executors, TimeUnit}
 
 import aug.profile.{Profile, ProfileConfig}
@@ -9,6 +8,7 @@ import org.bson.BsonType
 import org.mongodb.scala.bson.BsonValue
 import org.mongodb.scala.model.IndexOptions
 import org.mongodb.scala.model.Indexes._
+import org.mongodb.scala.model.IndexOptions
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase, Observable}
 
 import scala.concurrent.Await
@@ -33,7 +33,7 @@ object MongoImplicits {
       if (initial.length > 0) print(initial)
       results().foreach(res => println(converter(res)))
     }
-    def printHeadResult(initial: String = ""): Unit = println(s"${initial}${converter(headResult())}")
+    def printHeadResult(initial: String = ""): Unit = println(s"$initial${converter(headResult())}")
   }
 }
 
@@ -83,7 +83,6 @@ class Mongo (profile: Profile, profileConfig: ProfileConfig) extends AutoCloseab
     metrics = db.getCollection("metric")
     metrics.createIndex(ascending("timestamp"), IndexOptions().name("metric_ts_index")).results()
 
-
     // first 1501278043304
     // last 1501278046268
     val (ms, _) = Util.time {
@@ -113,42 +112,3 @@ class Mongo (profile: Profile, profileConfig: ProfileConfig) extends AutoCloseab
   override def toString: String = mongoClient.toString
 }
 
-object Test extends App {
-  import org.mongodb.scala.model.Aggregates._
-  import org.mongodb.scala.model.Accumulators._
-  import MongoImplicits._
-  import org.mongodb.scala.model.Indexes._
-  import org.mongodb.scala.model.Filters._
-
-//  val mongoClient = Util.printTime(MongoClient(s"mongodb://aard:141592pi@localhost/?authSource=augustmc:aard"))
-//  val db = mongoClient.getDatabase("augustmc:aard")
-//
-//  val rooms = db.getCollection("room")
-//  rooms.createIndex(ascending("num", "areaNum"), IndexOptions().unique(true).name("room_num_index")).results()
-//
-//  val metrics = db.getCollection("metric")
-//  metrics.createIndex(ascending("timestamp"), IndexOptions().name("metric_ts_index")).results()
-//
-  val doc = Document("q" -> 1501278046268l)
-
-  val map: Map[String, BsonValue] = doc.toMap
-  println(map("q").getBsonType == BsonType.INT64)
-
-
-  // first 1501278043304
-  // last 1501278046268
-  // diff 2964
-//  Util.printTime(metrics.aggregate(
-//    List(
-//      filter(
-//        and(
-//          gte("timestamp", 1501278043304l + 2964/4),
-//          lte("timestamp", 1501278046268l)
-//        )
-//      ),
-//      group(null,
-//        sum("sum", "$value"),
-//        sum("count", 1)
-//      )
-//    )).printHeadResult())
-}
