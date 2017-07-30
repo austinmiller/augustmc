@@ -49,16 +49,19 @@ class MainWindow extends JFrame {
   profileMenu.add(new JSeparator)
   profileMenu.add(openConfigDirMenuItem)
 
+  val acclr = if(OsTools.isMac) "meta" else "control"
+
   if (OsTools.isMac) {
     OsTools.macHandlePreferences(displaySettings())
     OsTools.macHandleQuit(Main.exit())
   } else {
     profileMenu.add(preferences)
     preferences.addActionListener(displaySettings())
+    preferences.setAccelerator(KeyStroke.getKeyStroke(s"$acclr S"))
   }
 
-  openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta O"))
-  closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta W"))
+  openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr O"))
+  closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr W"))
 
   openProfileMenuItem.addActionListener(openProfile())
   addProfileAction(closeProfileMenuItem, (profile: Profile) => ConfigManager.deactivateProfile(profile.name))
@@ -80,9 +83,9 @@ class MainWindow extends JFrame {
   addProfileAction(reconnectMenuItem, (profile: Profile) => profile.reconnect())
   addProfileAction(disconnectMenuItem, (profile: Profile) => profile.disconnect())
 
-  reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta R"))
-  connectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta T"))
-  disconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke("meta D"))
+  reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr R"))
+  connectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr T"))
+  disconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr D"))
 
   // client menu
 
@@ -92,9 +95,9 @@ class MainWindow extends JFrame {
   private val clientRestartMenuItem = new JMenuItem("restart client")
   private val clientStopMenuItem = new JMenuItem("client stop")
 
-  clientStartMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta T"))
-  clientRestartMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta R"))
-  clientStopMenuItem.setAccelerator(KeyStroke.getKeyStroke("shift meta D"))
+  clientStartMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr T"))
+  clientRestartMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr R"))
+  clientStopMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr D"))
 
   addProfileAction(clientStartMenuItem, (profile: Profile) => profile.clientStart())
   addProfileAction(clientRestartMenuItem, (profile: Profile) => profile.clientRestart())
@@ -111,7 +114,7 @@ class MainWindow extends JFrame {
 
   for (i <- 0 to 9) {
     val selectTabMenuItem = new JMenuItem(s"select tab $i")
-    selectTabMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"meta $i"))
+    selectTabMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr $i"))
     selectTabMenu.add(selectTabMenuItem)
     selectTabMenuItem.addActionListener(selectTab(i))
   }
