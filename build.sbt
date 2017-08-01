@@ -11,7 +11,6 @@ mainClass in Compile := Some("aug.gui.Main")
 
 unmanagedSourceDirectories in Compile += baseDirectory.value / "darcula/src"
 
-unmanagedJars in Compile += file("darcula/lib/iconloader.jar")
 unmanagedJars in Compile += file("darcula/lib/annotations.jar")
 
 libraryDependencies += "ch.qos.logback" %  "logback-classic" % "1.1.7"

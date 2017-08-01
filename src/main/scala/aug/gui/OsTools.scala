@@ -7,6 +7,7 @@ import com.apple.mrj.{MRJApplicationUtils, MRJPrefsHandler, MRJQuitHandler}
 object OsTools {
 
   val isMac = System.getProperty("os.name") == "Mac OS X"
+  val isLinux = System.getProperty("os.name") == "Linux"
 
   val shortcutKey = Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()
 

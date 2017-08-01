@@ -194,6 +194,11 @@ object Main extends App {
 
   OsTools.init("August MC")
 
+  if(OsTools.isLinux) {
+    // IconLoader has NPE without this.
+    UIManager.getFont("Label.font")
+  }
+
   UIManager.setLookAndFeel(new DarculaLaf)
 
   UIManager.put("Tree.textBackground", TransparentColor)
