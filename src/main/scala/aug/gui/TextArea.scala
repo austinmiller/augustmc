@@ -8,7 +8,7 @@ import javax.swing.border.EmptyBorder
 import javax.swing.{JPanel, JSplitPane}
 
 import aug.io._
-import aug.script.shared.TextWindowInterface
+import aug.script.framework.TextWindowInterface
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 

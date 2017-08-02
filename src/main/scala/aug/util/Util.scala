@@ -10,6 +10,7 @@ import java.util.jar.{Attributes, JarEntry, JarInputStream}
 import java.util.regex.Pattern
 
 import aug.profile.ConfigManager
+import aug.script.ScriptLoader
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.io.IOUtils
 import org.reflections.Reflections
@@ -17,6 +18,7 @@ import org.reflections.scanners.{ResourcesScanner, SubTypesScanner}
 import org.reflections.util.{ClasspathHelper, ConfigurationBuilder, FilterBuilder}
 import org.slf4j.LoggerFactory
 
+import scala.collection.immutable
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
@@ -158,7 +160,7 @@ object Util {
 
   val fontSizes = Array(8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64)
 
-  val monospaceFamilies = {
+  val monospaceFamilies: immutable.Seq[String] = {
     // create a graphics environment to measure fonts
     val bf = new BufferedImage(200, 80, BufferedImage.TYPE_INT_RGB)
     val bfg = bf.createGraphics
@@ -171,7 +173,7 @@ object Util {
     }.map(_.getFamily()).toSet.toList.sorted
   }
 
-  val defaultFont = {
+  val defaultFont: Font = {
     val desirableFonts = List("Menlo", "Consolas")
 
     desirableFonts.find(monospaceFamilies.contains).map(new Font(_, 0, 12))
@@ -182,7 +184,7 @@ object Util {
     val reflections = new Reflections(new ConfigurationBuilder()
       .setScanners(new SubTypesScanner(false /* don't exclude Object.class */), new ResourcesScanner())
       .setUrls(ClasspathHelper.forClassLoader(ClasspathHelper.contextClassLoader(), ClasspathHelper.staticClassLoader()))
-      .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix("aug.script.shared"))))
+      .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix(ScriptLoader.FRAMEWORK_CLASSPATH))))
     reflections.getSubTypesOf(classOf[Object]).toArray.map(_.asInstanceOf[Class[_]])
   }
 
@@ -226,7 +228,7 @@ object Util {
     } else false
   }
 
-  def getExistingClassBytes(file: File) = {
+  def getExistingClassBytes(file: File): Map[String, Array[Byte]] = {
     val mapb = Map.newBuilder[String, Array[Byte]]
 
     if (file.exists()) {
@@ -244,12 +246,12 @@ object Util {
     mapb.result()
   }
 
-  val sharedJarFile = new File(ConfigManager.configDir, "shared.jar")
+  val sharedJarFile = new File(ConfigManager.configDir, "framework.jar")
 }
 
 case class TelnetColor(color: Int, bright: Boolean) {
-  def quote = Pattern.quote(toString)
-  override def toString = {
+  def quote: String = Pattern.quote(toString)
+  override def toString: String = {
     val bc = if(bright) 1 else 0
     s"${Util.colorEscapeCode}[$bc;${color}m"
   }

@@ -5,7 +5,7 @@ import java.net.{URL, URLClassLoader}
 import java.util.concurrent.{Callable, Executors, TimeUnit}
 
 import aug.profile._
-import aug.script.shared.{ClientInterface, ProfileInterface, ReloadData}
+import aug.script.framework.{ClientInterface, ProfileInterface, ReloadData}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -14,6 +14,7 @@ import scala.util.{Failure, Success, Try}
 
 object ScriptLoader {
   val log = Logger(LoggerFactory.getLogger(ScriptLoader.getClass))
+  val FRAMEWORK_CLASSPATH: String = classOf[ClientInterface].getPackage.getName
 
   private val clientInterfaceT = classOf[ClientInterface]
 
@@ -42,7 +43,7 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
   import ScriptLoader._
 
   private class DetectClass(val parent: ClassLoader) extends ClassLoader(parent) {
-    override def findClass(name: String) = super.findClass(name)
+    override def findClass(name: String): Class[_] = super.findClass(name)
   }
 
   private class ChildClassLoader(val urls: Array[URL], realParent: DetectClass) extends URLClassLoader(urls, null) {
@@ -69,7 +70,7 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
       }
     }
 
-    val parentPrefixes = List("aug.script.shared", "aug.script.test", "java", "scala")
+    val parentPrefixes = List(ScriptLoader.FRAMEWORK_CLASSPATH, "aug.script.test", "java", "scala")
 
     def deferToParent(name: String) : Boolean = parentPrefixes.exists(name.startsWith)
   }

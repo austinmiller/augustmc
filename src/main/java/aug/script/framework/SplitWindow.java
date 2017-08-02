@@ -1,4 +1,4 @@
-package aug.script.shared;
+package aug.script.framework;
 
 public class SplitWindow extends WindowReference {
     private final WindowReference topLeft;

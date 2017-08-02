@@ -11,7 +11,7 @@ import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
 import aug.gui.{HasHighlight, MainWindow, ProfilePanel, SplittableTextArea}
 import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
-import aug.script.shared._
+import aug.script.framework._
 import aug.script.{Client, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger

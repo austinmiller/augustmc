@@ -1,6 +1,6 @@
 package aug.script.test
 
-import aug.script.shared._
+import aug.script.framework._
 
 class WindowGraph extends ClientInterface {
   var profile : ProfileInterface = _

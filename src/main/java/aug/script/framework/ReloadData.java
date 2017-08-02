@@ -1,4 +1,4 @@
-package aug.script.shared;
+package aug.script.framework;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -4,7 +4,7 @@ import java.io.File
 import java.lang.Boolean
 import java.util
 
-import aug.script.shared.{ProfileInterface, TextWindowInterface, WindowReference}
+import aug.script.framework.{ProfileInterface, TextWindowInterface, WindowReference}
 
 /**
   * <p>Use this class to collect the actions a script can call.  This class should

@@ -1,4 +1,4 @@
-package aug.script.shared;
+package aug.script.framework;
 
 public class WindowReference {
     private final String name;

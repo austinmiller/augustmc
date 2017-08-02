@@ -1,4 +1,4 @@
-package aug.script.shared;
+package aug.script.framework;
 
 /**
  * <p>All clients must have a class with a parameterless constructor which implements this

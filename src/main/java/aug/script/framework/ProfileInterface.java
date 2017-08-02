@@ -1,4 +1,4 @@
-package aug.script.shared;
+package aug.script.framework;
 
 
 import java.io.File;
