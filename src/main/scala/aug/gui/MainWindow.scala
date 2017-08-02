@@ -8,7 +8,7 @@ import javax.swing._
 import aug.gui.settings.SettingsWindow
 import aug.io.{ConnectionManager, SystemLog, TransparentColor}
 import aug.profile.{ConfigManager, Profile}
-import aug.util.{LoremIpsum, Util}
+import aug.util.Util
 import com.bulenkov.darcula.DarculaLaf
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -49,7 +49,7 @@ class MainWindow extends JFrame {
   profileMenu.add(new JSeparator)
   profileMenu.add(openConfigDirMenuItem)
 
-  val acclr = OsTools.accelerator
+  val acclr: String = OsTools.accelerator
 
   if (OsTools.isMac) {
     OsTools.macHandlePreferences(displaySettings())
