@@ -22,7 +22,6 @@ class MainWindow extends JFrame {
   val systemPanel = new SystemPanel(this)
   val slog = new SystemLog(systemPanel)
   slog.raw(Util.fullName)
-  slog.raw(LoremIpsum.paragraphs(10))
 
   val tabbedPane = new TabbedPane(this)
   tabbedPane.addTab("system", systemPanel)
