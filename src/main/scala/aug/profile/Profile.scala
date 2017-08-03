@@ -508,7 +508,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     */
   private[profile] def createTextWindow(name: String): TextWindowInterface = {
     windows.getOrElseUpdate(name, {
-      val sta = new SplittableTextArea(this, true)
+      val sta = new SplittableTextArea(this, false)
       sta.setActiveFont(profileConfig.consoleWindow.font.toFont)
       sta
     })

@@ -1,15 +1,20 @@
 package aug.script.test
 
+import java.awt.Font
+
 import aug.script.framework._
 
-class WindowGraph extends ClientInterface {
+class WindowGraph extends AbstractClient {
   var profile : ProfileInterface = _
+  var console : TextWindowInterface = _
   var com : TextWindowInterface = _
+  var metric : TextWindowInterface = _
 
   override def init(profileInterface: ProfileInterface, reloadData: ReloadData): Unit = {
     profile = profileInterface
+    console = profile.getTextWindow("console")
     com = profile.createTextWindow("com")
-    val metric = profile.createTextWindow("metric")
+    metric = profile.createTextWindow("metric")
 
     val graph = new SplitWindow(
       new WindowReference("console"),
@@ -20,34 +25,36 @@ class WindowGraph extends ClientInterface {
       ),
       true)
 
+    metric.setSplittable(false)
+    metric.setHighlightable(false)
+    com.setTextFont(new Font("Courier", 0, 36))
+    com.setTopColorScheme("bright")
+
     profile.setWindowGraph(graph)
 
     com.echo("hello")
     com.echo("hello2")
+    com.setLine(10, "line ten")
+    com.setLine(8, "line ten")
     metric.echo("100 xpm")
   }
 
-  override def shutdown(): ReloadData = { new ReloadData }
+  override def handleCommand(cmd: String): Boolean = {
+    cmd match {
+      case "clear" =>
+        metric.clear()
+        true
 
-  override def handleLine(lineNum: Long, line: String): Boolean = {
-    if (line.contains("Exits")) {
-      com.echo(line)
+      case "unsplit" =>
+        console.unsplit()
+        true
+
+      case "split" =>
+        console.split()
+        true
+
+      case none => false
     }
-
-    false
   }
 
-  override def handleFragment(fragment: String): Unit = {}
-
-  override def handleGmcp(gmcp: String): Unit = {}
-
-  override def handleCommand(cmd: String): Boolean = { false }
-
-  override def onConnect(id: Long, url: String, port: Int): Unit = {
-    println("connected")
-  }
-
-  override def onDisconnect(id: Long): Unit = {
-    println("disconnected")
-  }
 }
