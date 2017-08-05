@@ -7,6 +7,7 @@ import javax.swing._
 
 import aug.gui.settings.SettingsWindow
 import aug.io.{ConnectionManager, SystemLog, TransparentColor}
+import aug.macros.Class2Map
 import aug.profile.{ConfigManager, Profile}
 import aug.util.Util
 import com.bulenkov.darcula.DarculaLaf

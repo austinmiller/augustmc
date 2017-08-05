@@ -1,25 +1,47 @@
 import com.github.retronym.SbtOneJar._
+import Dependencies._
+import sbt.Keys._
 
-name := "augustmc"
-organization := "augustmc"
-version := "2017.1"
-scalaVersion := "2.11.8"
+lazy val macroSettings = Seq(
+  libraryDependencies += scalameta,
+  addCompilerPlugin(paradise),
+  scalacOptions += "-Xplugin-require:macroparadise"
+)
 
-oneJarSettings
+lazy val commonSettings = Seq(
+  version := "2017.1",
+  scalaVersion := scala212,
+  exportJars := true,
+  libraryDependencies ++= Seq(
+    "ch.qos.logback" %  "logback-classic" % "1.1.7",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
+    "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
+    "commons-io" % "commons-io" % "2.5",
+    "commons-lang" % "commons-lang" % "2.6",
+    "org.scalatest" %% "scalatest" % "3.2.0-SNAP9" % "test",
+    "org.reflections" % "reflections" % "0.9.11",
+    "mrj" % "MRJToolkitStubs" % "1.0"
+  )
+) ++ oneJarSettings
 
-mainClass in Compile := Some("aug.gui.Main")
+lazy val rootSettings = Seq(
+  name := "augustmc",
+  organization := "augustmc",
+  mainClass in Compile := Some("aug.gui.Main")
+)
 
-libraryDependencies += "ch.qos.logback" %  "logback-classic" % "1.1.7"
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0"
+lazy val macroProject = project
+  .in(file("macro"))
+  .settings(
+    macroSettings,
+    commonSettings
+  )
 
-libraryDependencies += "org.mongodb.scala" % "mongo-scala-driver_2.11" % "2.1.0"
-
-libraryDependencies += "commons-io" % "commons-io" % "2.5"
-libraryDependencies += "commons-lang" % "commons-lang" % "2.6"
-
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
-
-libraryDependencies += "org.reflections" % "reflections" % "0.9.11"
-
-libraryDependencies += "mrj" % "MRJToolkitStubs" % "1.0"
-
+lazy val root = project
+  .in(file("."))
+  .dependsOn(macroProject)
+  .settings(
+    macroSettings,
+    commonSettings,
+    rootSettings
+  )
