@@ -64,8 +64,8 @@ class TextArea(hasHighlight: HasHighlight, val text: Text) extends JPanel {
   override def paint(g: Graphics): Unit = synchronized {
     super.paint(g)
 
-    clipHeight = g.getClipBounds.height
-    clipWidth = g.getClipBounds.width
+    clipHeight = getHeight
+    clipWidth = getWidth
     val height = clipHeight - 5
     val width = clipWidth - 5
     numLines = Math.ceil(height.toDouble / fontHeight).toInt
