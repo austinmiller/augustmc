@@ -1,6 +1,7 @@
 package aug.script.framework.reload;
 
 import aug.script.framework.ReloadData;
+import aug.script.framework.reload.Converter;
 
 import java.util.ArrayList;
 import java.util.List;

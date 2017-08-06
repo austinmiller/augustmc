@@ -30,8 +30,16 @@ lazy val rootSettings = Seq(
   mainClass in Compile := Some("aug.gui.Main")
 )
 
-lazy val macroProject = project
+lazy val macros = project
   .in(file("macro"))
+  .settings(
+    macroSettings,
+    commonSettings
+  )
+
+lazy val framework = project
+  .in(file("framework"))
+  .dependsOn(macros)
   .settings(
     macroSettings,
     commonSettings
@@ -39,7 +47,8 @@ lazy val macroProject = project
 
 lazy val root = project
   .in(file("."))
-  .dependsOn(macroProject)
+  .dependsOn(macros)
+  .dependsOn(framework)
   .settings(
     macroSettings,
     commonSettings,

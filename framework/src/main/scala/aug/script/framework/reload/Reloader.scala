@@ -8,7 +8,7 @@ import java.util.regex.Pattern
 import aug.script.framework.ReloadData
 
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.collection.{TraversableLike, mutable}
 import scala.reflect.ClassTag
@@ -17,9 +17,7 @@ import scala.util.{Failure, Try}
 class ReloadException(message: String, cause: Throwable = null) extends Exception(message, cause)
 
 object Converter {
-  val collectionsDelimiter = "#"
-
-  val pattern = Pattern.compile("([0-9]*):.*")
+  private val pattern = Pattern.compile("([0-9]*):.*")
 
   def listToString(list: List[String]): String = {
     list.map(s=> s"${s.length}:$s").mkString("")
@@ -110,30 +108,12 @@ class CollectionConverter[T <: TraversableLike[String, _]](implicit tt: reflect.
 class JavaCollectionConverter[T <: util.Collection[String]](implicit ct: ClassTag[T]) extends Converter[T] {
   private val cl = ct.runtimeClass
 
-  override def convertToString(t: T): String = Converter.listToString(t.toList)
+  override def convertToString(t: T): String = Converter.listToString(t.asScala.toList)
 
   override def convertToValue(string: String): T = {
     val in = cl.newInstance().asInstanceOf[T]
     Converter.stringToList(string).foreach(in.add)
     in
-  }
-}
-
-object JavaListConverter extends Converter[java.util.List[_]] {
-  override def convertToString(t: util.List[_]): String = t.mkString(Converter.collectionsDelimiter)
-  override def convertToValue(string: String): util.List[_] = {
-    val list = new util.ArrayList[String]()
-    string.split(Converter.collectionsDelimiter, -1).foreach(list.add)
-    list
-  }
-}
-
-object JavaSetConverter extends Converter[java.util.Set[_]] {
-  override def convertToString(t: util.Set[_]): String = t.mkString(Converter.collectionsDelimiter)
-  override def convertToValue(string: String): util.Set[_] = {
-    val set = new util.HashSet[String]()
-    string.split(Converter.collectionsDelimiter, -1).foreach(set.add)
-    set
   }
 }
 
@@ -198,28 +178,24 @@ object Reloader {
 
   def loadInstances[T <: Reloadable](
                                       reloadData: ReloadData,
-                                      cl: Class[T],
+                                      cl: java.lang.Class[T],
                                       objs: java.util.List[T],
                                       userConverters: java.util.List[Converter[_]]): java.util.List[Exception] = {
 
-    val exceptions = new java.util.ArrayList[Exception]()
-    val (instances, errors) = loadInstances(reloadData, cl, userConverters.toList)
+    val (instances, errors) = loadInstances(reloadData, cl, userConverters.asScala.toList)
     instances.foreach(objs.add)
-    errors.foreach(exceptions.add)
-    exceptions
+    errors.asJava
   }
 
 
   def loadInstances[T <: Reloadable](
                                       reloadData: ReloadData,
-                                      cl: Class[T],
+                                      cl: java.lang.Class[T],
                                       objs: java.util.List[T]): java.util.List[Exception] = {
 
-    val exceptions = new java.util.ArrayList[Exception]()
     val (instances, errors) = loadInstances(reloadData, cl, List.empty)
     instances.foreach(objs.add)
-    errors.foreach(exceptions.add)
-    exceptions
+    errors.asJava
   }
 
   def loadInstances[T <: Reloadable](
@@ -238,7 +214,7 @@ object Reloader {
 
     val prefix = cl.getName + "|"
 
-    val keys: mutable.Set[Long] = reloadData.data.keySet().filter(_.startsWith(prefix)).map(extractInstanceKey)
+    val keys: mutable.Set[Long] = reloadData.data.keySet().asScala.filter(_.startsWith(prefix)).map(extractInstanceKey)
 
     val fields = cl.getDeclaredFields.filter(isAnnotated)
 
@@ -263,7 +239,7 @@ object Reloader {
 
           if (!access) f.setAccessible(false)
         } match {
-          case Failure(e) => errors.add(new ReloadException("failed manipulating type", e))
+          case Failure(e) => errors += new ReloadException("failed manipulating type", e)
           case _ =>
         }
       }
@@ -275,11 +251,11 @@ object Reloader {
   }
 
   def saveInstances(reloadData: ReloadData, objs: java.util.List[Reloadable], userConverters: java.util.List[Converter[_]]): List[Exception] = {
-    saveInstances(reloadData, objs.toList, userConverters.toList)
+    saveInstances(reloadData, objs.asScala.toList, userConverters.asScala.toList)
   }
 
   def saveInstances(reloadData: ReloadData, objs: java.util.List[Reloadable]): List[Exception] = {
-    saveInstances(reloadData, objs.toList, List.empty)
+    saveInstances(reloadData, objs.asScala.toList, List.empty)
   }
 
   def saveInstances(reloadData: ReloadData, objs: List[Reloadable]): List[Exception] = {
@@ -308,16 +284,16 @@ object Reloader {
 
 
     // have to be Java friendly, I guess
-  def loadStaticFields(reloadData: ReloadData, classes: java.util.List[Class[_]],
+  def loadStaticFields(reloadData: ReloadData, classes: java.util.List[java.lang.Class[_]],
                        userConverters: java.util.List[Converter[_]]): java.util.List[Exception] = {
-    loadStaticFields(reloadData, classes, userConverters.toList)
+    loadStaticFields(reloadData, classes, userConverters.asScala.toList)
   }
 
-  def loadStaticFields(reloadData: ReloadData, classes: java.util.List[Class[_]]): java.util.List[Exception] = {
+  def loadStaticFields(reloadData: ReloadData, classes: java.util.List[java.lang.Class[_]]): java.util.List[Exception] = {
     loadStaticFields(reloadData, classes, List.empty)
   }
 
-  def loadStaticFields(reloadData: ReloadData, classes: java.util.List[Class[_]],
+  def loadStaticFields(reloadData: ReloadData, classes: java.util.List[java.lang.Class[_]],
                        userConverters: List[Converter[_]]): java.util.List[Exception] = {
     val errors = new util.ArrayList[Exception]()
     val converters = userConverters ++ this.converters
@@ -336,16 +312,16 @@ object Reloader {
     errors
   }
 
-  def saveStaticFields(reloadData: ReloadData, classes: java.util.List[Class[_]],
+  def saveStaticFields(reloadData: ReloadData, classes: java.util.List[java.lang.Class[_]],
                        userConverters: java.util.List[Converter[_]]): java.util.List[Exception] = {
-    saveStaticFields(reloadData, classes, userConverters.toList)
+    saveStaticFields(reloadData, classes, userConverters.asScala.toList)
   }
 
-  def saveStaticFields(reloadData: ReloadData, classes: java.util.List[Class[_]]): java.util.List[Exception] = {
+  def saveStaticFields(reloadData: ReloadData, classes: java.util.List[java.lang.Class[_]]): java.util.List[Exception] = {
     saveStaticFields(reloadData, classes, List.empty)
   }
 
-  def saveStaticFields(reloadData: ReloadData, classes: java.util.List[Class[_]],
+  def saveStaticFields(reloadData: ReloadData, classes: java.util.List[java.lang.Class[_]],
                        userConverters: List[Converter[_]]): java.util.List[Exception] = {
     val errors = new util.ArrayList[Exception]()
     val converters = userConverters ++ this.converters
@@ -402,7 +378,7 @@ object Reloader {
                              errors: java.util.List[Exception],
                              funk: (Class[_], Field) => Unit): Unit = {
 
-    classes.toList.foreach { cl =>
+    classes.asScala.toList.foreach { cl =>
       cl.getDeclaredFields.filter(isStatic).filter(isAnnotated).foreach{ f=>
         Try {
           val access = f.isAccessible

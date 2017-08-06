@@ -2,10 +2,9 @@ package aug.script.framework.reload
 
 import java.lang.Long
 import java.util
-import javax.security.auth.Subject
 
 import aug.script.framework.ReloadData
-import aug.util.LoremIpsum
+import aug.script.framework.tools.LoremIpsum
 import org.scalatest.FlatSpec
 
 import scala.collection.mutable.ListBuffer
