@@ -1,4 +1,4 @@
-package aug.script.test
+package aug.script.examples.scala
 
 import aug.script.framework.{ClientInterface, ProfileInterface, ReloadData}
 

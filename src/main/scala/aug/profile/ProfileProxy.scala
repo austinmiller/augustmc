@@ -4,7 +4,7 @@ import java.io.File
 import java.lang.Boolean
 import java.util
 
-import aug.script.framework.{ProfileInterface, TextWindowInterface, WindowReference}
+import aug.script.framework._
 
 /**
   * <p>Use this class to collect the actions a script can call.  This class should
@@ -30,4 +30,5 @@ class ProfileProxy(profile: Profile) extends ProfileInterface {
   override def printException(t: Throwable): Unit = profile.handleClientException(t)
   override def clientStop(): Unit = profile.clientStop()
   override def clientRestart(): Unit = profile.clientRestart()
+  override def getScheduler(reloaders: Array[RunnableReloader[_ <: Runnable]]): SchedulerInterface = profile.getScheduler(reloaders)
 }

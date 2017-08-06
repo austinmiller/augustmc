@@ -1,4 +1,4 @@
-package aug.script.test
+package aug.script.examples.scala
 
 import java.awt.Font
 

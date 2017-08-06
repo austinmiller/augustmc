@@ -11,7 +11,7 @@ import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 import aug.gui.{HasHighlight, MainWindow, ProfilePanel, SplittableTextArea}
 import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
 import aug.script.framework._
-import aug.script.{Client, ScriptLoader}
+import aug.script.{Client, ClientCaller, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -54,6 +54,8 @@ case class ProfileLog(on: Boolean, color: Boolean) extends AbstractProfileEvent(
 case class MongoStart() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class MongoStop() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 
+case class ClientEvent(event: ClientCaller) extends AbstractProfileEvent(Int.MinValue + 2, EventId.nextId)
+
 case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetRecv(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetGMCP(data: String) extends AbstractProfileEvent(0, EventId.nextId)
@@ -65,6 +67,7 @@ case class ClientStop() extends AbstractProfileEvent(0, EventId.nextId)
 
 class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) extends AutoCloseable
   with HasHighlight {
+
   import Profile.log
   import Util.Implicits._
 
@@ -88,6 +91,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var lineNum: Long = 0
   private var fragment: String = ""
   private var clientReloadData = new ReloadData
+  private var schedulerState = List.empty[String]
 
   val console = new SplittableTextArea(profileConfig, this)
   windows("console") = console
@@ -195,6 +199,9 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
               t.close()
             }
 
+          case ClientEvent(clientCaller) =>
+            clientCaller.callOnClient()
+
           case ClientStart() =>
             Try {
               client match {
@@ -221,6 +228,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             client match {
               case Some(scr) =>
                 client = None
+                schedulerState = scr.schedulerState
                 clientReloadData = scr.shutdown()
               case None =>
                 slog.error(f"no client to shutdown")
@@ -271,7 +279,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       log.error(f"failed to offer event $event")
     }
   }
-
 
   def mongoStart(): Unit = offer(MongoStart())
 
@@ -534,6 +541,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     */
   private[profile] def getTextWindow(name: String): TextWindowInterface = {
     windows.getOrElse(name, throw new RuntimeException(s"no window found with name $name"))
+  }
+
+  /**
+    * <p><STRONG>This should *only* be called by the client.</STRONG></p>
+    */
+  def getScheduler(reloaders: Seq[RunnableReloader[_ <: Runnable]]): SchedulerInterface = {
+    client.map(_.getScheduler(schedulerState, reloaders)).getOrElse(throw new RuntimeException("client not found"))
   }
 }
 

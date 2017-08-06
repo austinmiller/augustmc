@@ -45,10 +45,18 @@ lazy val framework = project
     commonSettings
   )
 
+lazy val examples = project
+  .in(file("examples"))
+  .dependsOn(framework)
+  .settings(
+    commonSettings
+  )
+
 lazy val root = project
   .in(file("."))
   .dependsOn(macros)
   .dependsOn(framework)
+  .dependsOn(examples)
   .settings(
     macroSettings,
     commonSettings,

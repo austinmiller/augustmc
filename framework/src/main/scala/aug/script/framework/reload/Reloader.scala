@@ -3,11 +3,10 @@ package aug.script.framework.reload
 import java.lang.reflect.{Field, Modifier}
 import java.lang.{Byte, Long}
 import java.util
-import java.util.regex.Pattern
 
 import aug.script.framework.ReloadData
+import aug.script.framework.tools.ScalaUtils
 
-import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.collection.{TraversableLike, mutable}
@@ -15,34 +14,6 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Try}
 
 class ReloadException(message: String, cause: Throwable = null) extends Exception(message, cause)
-
-object Converter {
-  private val pattern = Pattern.compile("([0-9]*):.*")
-
-  def listToString(list: List[String]): String = {
-    list.map(s=> s"${s.length}:$s").mkString("")
-  }
-
-  def stringToList(string: String): List[String] = {
-    val builder = List.newBuilder[String]
-
-    @tailrec
-    def process(string: String): Unit = {
-      if (string.nonEmpty) {
-        val tokens = string.split(":", 2)
-        if (tokens.length != 2) throw new ReloadException("failure decoding collection")
-        val len = tokens(0).toInt
-        val (head, tail) = tokens(1).splitAt(len)
-        builder += head
-        process(tail)
-      }
-    }
-
-    process(string)
-
-    builder.result()
-  }
-}
 
 abstract class Converter[T](implicit ct: ClassTag[T]) {
   final def typeToConvert: Class[_] = ct.runtimeClass
@@ -98,21 +69,21 @@ class CollectionConverter[T <: TraversableLike[String, _]](implicit tt: reflect.
     member.isMethod && member.name.toString == "apply"
   }.map(_.asMethod).getOrElse(throw new ReloadException("no apply method found"))
 
-  override def convertToString(t: T): String = Converter.listToString(t.toList)
+  override def convertToString(t: T): String = ScalaUtils.encodeList(t.toList)
 
   override def convertToValue(string: String): T = {
-    ru.reflect(mm.instance).reflectMethod(apply)(Converter.stringToList(string)).asInstanceOf[T]
+    ru.reflect(mm.instance).reflectMethod(apply)(ScalaUtils.decodeList(string)).asInstanceOf[T]
   }
 }
 
 class JavaCollectionConverter[T <: util.Collection[String]](implicit ct: ClassTag[T]) extends Converter[T] {
   private val cl = ct.runtimeClass
 
-  override def convertToString(t: T): String = Converter.listToString(t.asScala.toList)
+  override def convertToString(t: T): String = ScalaUtils.encodeList(t.asScala.toList)
 
   override def convertToValue(string: String): T = {
     val in = cl.newInstance().asInstanceOf[T]
-    Converter.stringToList(string).foreach(in.add)
+    ScalaUtils.decodeList(string).foreach(in.add)
     in
   }
 }

@@ -153,4 +153,12 @@ public interface ProfileInterface {
      * <p>This generates a high-priority event.</p>
      */
     void clientRestart();
+
+    /**
+     * <p>Creates or gets a scheduler for this client.  On the first time the client
+     * calls this, the reloaders param will be used to load any previously saved
+     * runnables (including the time they were saved).  For any subsequent calls,
+     * the reloaders param is ignored.</p>
+     */
+    SchedulerInterface getScheduler(RunnableReloader<? extends Runnable> [] reloaders);
 }

@@ -5,7 +5,7 @@ import java.net.{URL, URLClassLoader}
 import java.util.concurrent.{Callable, Executors, TimeUnit}
 
 import aug.profile._
-import aug.script.framework.{ClientInterface, ProfileInterface, ReloadData}
+import aug.script.framework.{ClientInterface, ProfileInterface, ReloadData, RunnableReloader}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -70,7 +70,12 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
       }
     }
 
-    val parentPrefixes = List(ScriptLoader.FRAMEWORK_CLASSPATH, "aug.script.test", "java", "scala")
+    val parentPrefixes = List(
+      ScriptLoader.FRAMEWORK_CLASSPATH,
+      "aug.script.examples",
+      "java",
+      "scala"
+    )
 
     def deferToParent(name: String) : Boolean = parentPrefixes.exists(name.startsWith)
   }
@@ -101,12 +106,25 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   import ScriptLoader.log
 
   private val executorService = Executors.newFixedThreadPool(1)
+  private var scheduler: Option[Scheduler] = None
+
+  def getScheduler(state: List[String], reloaders: Seq[RunnableReloader[_ <: Runnable]]): Scheduler = {
+    scheduler.getOrElse {
+      val sch = new Scheduler(this, profile, reloaders)
+      sch.hydrate(state)
+      scheduler = Some(sch)
+      sch
+    }
+  }
+
+  def schedulerState: List[String] = scheduler.map(_.save).getOrElse(List.empty)
 
   override def close(): Unit = {
     executorService.shutdownNow()
-    if(!executorService.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
+    if (!executorService.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
       log.error("failed to shutdown client executor service")
     }
+    scheduler.foreach(_.close())
   }
 
   override def shutdown(): ReloadData = {
@@ -141,8 +159,8 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
     }
   }
 
-  override def init(profile: ProfileInterface, reloadData: ReloadData): Unit =
-    execute(client.init(profile, reloadData))
+  def handleEvent(runnable: Runnable): Unit = execute(runnable.run())
+  override def init(profile: ProfileInterface, reloadData: ReloadData): Unit = execute(client.init(profile, reloadData))
   override def onConnect(id: Long, url: String, port: Int): Unit = execute(client.onConnect(id, url, port))
   override def handleLine(lineNum: Long, line: String): Boolean = execute(client.handleLine(lineNum, line))
   override def handleFragment(s: String): Unit = execute(client.handleFragment(s))
