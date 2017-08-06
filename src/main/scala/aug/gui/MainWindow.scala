@@ -83,9 +83,9 @@ class MainWindow extends JFrame {
   addProfileAction(reconnectMenuItem, (profile: Profile) => profile.reconnect())
   addProfileAction(disconnectMenuItem, (profile: Profile) => profile.disconnect())
 
-  reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr R"))
-  connectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr T"))
-  disconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr D"))
+  reconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr R"))
+  connectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr T"))
+  disconnectMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr D"))
 
   // client menu
 
@@ -95,9 +95,9 @@ class MainWindow extends JFrame {
   private val clientRestartMenuItem = new JMenuItem("restart client")
   private val clientStopMenuItem = new JMenuItem("client stop")
 
-  clientStartMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr T"))
-  clientRestartMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr R"))
-  clientStopMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"shift $acclr D"))
+  clientStartMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr T"))
+  clientRestartMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr R"))
+  clientStopMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr D"))
 
   addProfileAction(clientStartMenuItem, (profile: Profile) => profile.clientStart())
   addProfileAction(clientRestartMenuItem, (profile: Profile) => profile.clientRestart())
