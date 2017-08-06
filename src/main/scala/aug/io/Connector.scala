@@ -17,6 +17,8 @@ trait Connector {
   def quickConnect(): Unit // the connector was able to connect without blocking
   def select(): Unit
   def finishConnect(): Unit
+  def onDisconnect(): Unit
+  def onCancel(): Unit
   def read(): Unit
   def write(): Unit
   def address: InetSocketAddress
@@ -30,17 +32,19 @@ object Connector {
 
 abstract class AbstractConnection(val address: InetSocketAddress) extends Connector with AutoCloseable {
 
-  val log = Connector.log
-  var channel : SocketChannel = _
-  val closed = new AtomicBoolean(false)
-  val in = ByteBuffer.allocate(2<<20)
-  val queue = new ConcurrentLinkedQueue[Array[Byte]]()
-  var out : Option[ByteBuffer] = None
+  private val log = Connector.log
+  private var channel : SocketChannel = _
+  private val connected = new AtomicBoolean(false)
+  private val closed = new AtomicBoolean(false)
+  private val in = ByteBuffer.allocate(2<<20)
+  private val queue = new ConcurrentLinkedQueue[Array[Byte]]()
+  private var out : Option[ByteBuffer] = None
 
-  def isClosed = closed.get
+  def isClosed: Boolean = closed.get
+  def isConnected: Boolean = connected.get
 
   override def close() : Unit = {
-    if(!closed.compareAndSet(false,true)) return
+    if(!closed.compareAndSet(false, true)) return
 
     queue.clear()
     Try {
@@ -55,6 +59,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
   def connect(): Unit = {
     Try {
       ConnectionManager.register(this)
+      connected.set(true)
     } match {
       case Failure(e) =>
         log.error("error registering socket",e)
@@ -69,6 +74,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
       if(isClosed) throw new IOException("closed")
       channel.finishConnect()
       if(!channel.isOpen || !channel.isConnected) throw new IOException("channel is not open or connected")
+      connected.set(true)
     } match {
       case Failure(e) =>
         log.error("failed to finish connection",e)
@@ -79,7 +85,6 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
   }
 
   def send(msg : Array[Byte]) {
-
     if (!isClosed) {
       queue.add(msg)
     }
@@ -87,7 +92,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
 
   def send(s: String) : Unit = send(s.getBytes())
 
-  override def setSocketChannel(channel: SocketChannel) = this.channel = channel
+  override def setSocketChannel(channel: SocketChannel): Unit = this.channel = channel
 
   protected def handleIncoming(bytes: Array[Byte]) : Unit
 
@@ -104,15 +109,17 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
       if(!in.hasRemaining) return
 
       val copy = new Array[Byte](in.limit)
-      System.arraycopy(in.array(),0,copy,0,copy.length)
+      System.arraycopy(in.array(), 0, copy, 0, copy.length)
       handleIncoming(copy)
     } match {
       case Failure(e: IOException) =>
         log.info("connection reset by peer")
+        onDisconnect()
         close()
 
       case Failure(e) =>
         log.error("error on read, closing", e)
+        onDisconnect()
         close()
 
       case _ =>
@@ -137,10 +144,25 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
       }
     } match {
       case Failure(e) =>
-        log.error("error on write, closing",e)
+        log.error("error on write, closing", e)
+        onDisconnect()
         close()
 
       case _ =>
+    }
+  }
+
+  override def onDisconnect(): Unit = {
+    connected.set(false)
+  }
+
+  override def onCancel(): Unit = {
+    if (connected.compareAndSet(true, false)) {
+      onDisconnect()
+    }
+
+    if (!isClosed) {
+      close()
     }
   }
 
@@ -201,7 +223,7 @@ object ConnectionManager extends AutoCloseable with Runnable  {
     log.debug("connector registered: {}", ch)
   }
 
-  def register(server: Server) = {
+  def register(server: Server): Unit = {
     val channel = ServerSocketChannel.open()
     channel.configureBlocking(false)
     channel.socket().setReuseAddress(true)
@@ -241,16 +263,34 @@ object ConnectionManager extends AutoCloseable with Runnable  {
 
   private def processKey(key : SelectionKey): Unit = {
     if(!key.isValid) {
+      key.attachment match {
+        case c: Connector => c.onCancel()
+        case _ =>
+      }
       key.cancel()
       return
     }
 
-    if(key.isAcceptable) key.attachment.asInstanceOf[Server].accept()
-    if(key.isConnectable) key.attachment.asInstanceOf[Connector].finishConnect()
+    if(key.isAcceptable) {
+      key.attachment match {
+        case server: Server => server.accept()
+        case _ =>
+      }
+    }
+
+    if(key.isConnectable) {
+      key.attachment match {
+        case connector: Connector => connector.finishConnect()
+        case _ =>
+      }
+    }
 
     if(key.isReadable) {
       Try {
-        key.attachment.asInstanceOf[Connector].read()
+        key.attachment match {
+          case connector: Connector => connector.read()
+          case _ =>
+        }
       } match {
         case Failure(e) =>
           log.info("closing {}", key.attachment)
@@ -263,7 +303,10 @@ object ConnectionManager extends AutoCloseable with Runnable  {
 
     if(key.isValid && key.isWritable) {
       Try {
-        key.attachment.asInstanceOf[Connector].write()
+        key.attachment match {
+          case connector: Connector => connector.write()
+          case _ =>
+        }
       } match {
         case Failure(e) =>
           log.info("closing {}", key.attachment)

@@ -154,12 +154,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             slog.info(s"telnet error: $data")
 
           case TelnetDisconnect(id) =>
-            synchronized {
-              addLine(Util.colorCode("0") + "--disconnected--")
-              slog.info(s"received disconnect command")
-            }
-
-            client.foreach(_.onDisconnect(id))
+            onDisconnect(id)
+            slog.info(s"disconnected $id")
 
           case TelnetRecv(data) => processText(data)
 
@@ -194,8 +190,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             }
 
           case ProfileDisconnect() =>
-            telnet.foreach(_.close())
-            telnet = None
+            telnet.foreach {t =>
+              onDisconnect(t.id)
+              t.close()
+            }
 
           case ClientStart() =>
             Try {
@@ -310,6 +308,22 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       f
     } catch {
       case _: Throwable =>
+    }
+  }
+
+  /**
+    * <p>Handle disconnect whether by server or client.</p>
+    *
+    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
+    *
+    */
+  private def onDisconnect(id: Long): Unit = {
+    telnet.foreach{ t=>
+      if (t.id == id) {
+        addLine(Util.colorCode("0") + "--disconnected--")
+        client.foreach(_.onDisconnect(id))
+      }
+      telnet = None
     }
   }
 

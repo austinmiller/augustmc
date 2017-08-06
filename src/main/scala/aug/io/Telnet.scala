@@ -83,11 +83,11 @@ object Telnet {
 class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   AbstractConnection(new InetSocketAddress(profileConfig.telnetConfig.host,
     profileConfig.telnetConfig.port)) {
-  override val log = Telnet.log
+  private val log = Telnet.log
 
-  val url = profileConfig.telnetConfig.host
-  val port = profileConfig.telnetConfig.port
-  val id = Telnet.idGenerator.incrementAndGet()
+  val url: String = profileConfig.telnetConfig.host
+  val port: Int = profileConfig.telnetConfig.port
+  val id: Long = Telnet.idGenerator.incrementAndGet()
 
   private val inflater = new Inflater()
   private val inflateBuffer = ByteBuffer.allocate(1<<16)
@@ -103,7 +103,6 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   override def close(): Unit = {
     super.close()
-    profile.offer(TelnetDisconnect(id))
   }
 
   override def connect(): Unit = {
@@ -326,4 +325,9 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   }
 
   override def toString: String = s"Telnet [$id, $url:$port]"
+
+  override def onDisconnect(): Unit = {
+    super.onDisconnect()
+    profile.offer(TelnetDisconnect(id))
+  }
 }
