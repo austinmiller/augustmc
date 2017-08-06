@@ -4,14 +4,15 @@ import java.awt._
 import javax.swing.border.EmptyBorder
 import javax.swing.{JPanel, JTabbedPane}
 
+import aug.profile.ProfileConfig
 import aug.util.Util
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
 class SystemPanel(mainWindow: MainWindow) extends JPanel with HasHighlight {
   setLayout(new GridLayout(1, 1))
 
-  val textArea = new SplittableTextArea(this)
-  val text = textArea.text
+  val textArea = new SplittableTextArea(ProfileConfig(""), this)
+  val text: Text = textArea.text
 
   textArea.setActiveFont(Util.defaultFont)
 
@@ -29,10 +30,13 @@ class TabbedPane(mainWindow: MainWindow) extends JTabbedPane {
 
   def active : Option[ProfilePanel] = {
     val c = getComponentAt(getSelectedIndex)
-    if (c.isInstanceOf[ProfilePanel]) Some(c.asInstanceOf[ProfilePanel]) else None
+    c match {
+      case panel: ProfilePanel => Some(panel)
+      case _ => None
+    }
   }
 
-  def addProfile(name: String, profilePanel: ProfilePanel) = {
+  def addProfile(name: String, profilePanel: ProfilePanel): Unit = {
     addTab(name, profilePanel)
     setSelectedComponent(profilePanel)
   }

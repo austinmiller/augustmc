@@ -8,7 +8,7 @@ import javax.swing.border.EmptyBorder
 import javax.swing.{JPanel, JSplitPane}
 
 import aug.io._
-import aug.profile.ConfigManager
+import aug.profile.{ConfigManager, ProfileConfig}
 import aug.script.framework.TextWindowInterface
 
 import scala.annotation.tailrec
@@ -210,9 +210,9 @@ class TextArea(hasHighlight: HasHighlight, val text: Text) extends JPanel {
   addMouseMotionListener(motionListener)
 }
 
-class SplittableTextArea(hasHighlight: HasHighlight, console: Boolean = true) extends JSplitPane with
-  MouseWheelListener with TextWindowInterface {
-  val text = new Text
+class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighlight, console: Boolean = true)
+  extends JSplitPane with MouseWheelListener with TextWindowInterface {
+  val text = new Text(profileConfig)
   private val topTextArea = new TextArea(hasHighlight, text)
   private val textArea = new TextArea(hasHighlight, text)
   private var scrollPos : Long = 0
@@ -233,6 +233,8 @@ class SplittableTextArea(hasHighlight: HasHighlight, console: Boolean = true) ex
 
   setBorder(new EmptyBorder(0, 0, 0, 0))
 
+  def setProfileConfig(profileConfig: ProfileConfig): Unit = text.profileConfig = profileConfig
+
   def setActiveFont(font: Font): Unit = {
     setFont(font)
     topTextArea.setActiveFont(font)
@@ -247,7 +249,7 @@ class SplittableTextArea(hasHighlight: HasHighlight, console: Boolean = true) ex
     }
   }
 
-  def isSplit = topTextArea.isVisible
+  def isSplit: Boolean = topTextArea.isVisible
 
   override def split() : Unit = {
     if (!isSplit && splittable) {

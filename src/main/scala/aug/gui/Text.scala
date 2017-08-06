@@ -1,6 +1,7 @@
 package aug.gui
 
 import aug.io._
+import aug.profile.ProfileConfig
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -16,7 +17,7 @@ case class Fragment(text: String, colorCode: ColorCode) {
 }
 
 case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long, pos: Int = 0) {
-  def :+(fragment: Fragment) = {
+  def :+(fragment: Fragment): Line = {
     if (fragments.nonEmpty && fragments.last.colorCode == fragment.colorCode) {
       appendToLastFragment(fragment.text)
     } else Line(fragments :+ fragment, commands, lineNum, pos)
@@ -27,14 +28,39 @@ case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long
     Line(fragments.dropRight(1) :+ Fragment(last.text + text, last.colorCode), commands, lineNum, pos)
   }
 
-  def mergeCommands : Line = {
-    if (commands.isEmpty) this else {
-      val frag = Fragment(commands.mkString(" | "), ColorCode(TelnetColorYellow))
-      this.copy(fragments = this.fragments :+ frag)
-    }
+  def mergeCommands(profileConfig: ProfileConfig): List[Line] = {
+    if (profileConfig.consoleWindow.echoCommands && commands.nonEmpty) {
+      val builder = List.newBuilder[Line]
+
+      if (profileConfig.consoleWindow.cmdsOnNewLine) {
+        builder += this
+
+        if (profileConfig.consoleWindow.stackCmds) {
+          val frag = Fragment(commands.mkString(" | "), ColorCode(TelnetColorYellow))
+          builder += Line(List(frag), List.empty, lineNum, length)
+        } else {
+          commands.foreach { cmd =>
+            builder += Line(List(Fragment(cmd, ColorCode(TelnetColorYellow))), List.empty, lineNum, length)
+          }
+        }
+      } else {
+        if (profileConfig.consoleWindow.stackCmds) {
+          val frag = Fragment(commands.mkString(" | "), ColorCode(TelnetColorYellow))
+          builder += this.copy(fragments = this.fragments :+ frag)
+        } else {
+          val xs :: tail = commands
+          builder += this.copy(fragments = this.fragments :+ Fragment(xs, ColorCode(TelnetColorYellow)))
+          tail.foreach { cmd =>
+            builder += Line(List(Fragment(cmd, ColorCode(TelnetColorYellow))), List.empty, lineNum, length)
+          }
+        }
+      }
+
+      builder.result()
+    } else List(this)
   }
 
-  def length = fragments.map(_.text.length).sum
+  def length: Int = fragments.map(_.text.length).sum
 
   def split(wrapAt: Int) : List[Line] = {
 
@@ -78,7 +104,7 @@ case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long
     lines.result
   }
 
-  def str = fragments.map(_.text).mkString
+  def str: String = fragments.map(_.text).mkString
 
   def highlight(start: TextPos, end: TextPos): Line = {
     if (lineNum >= start.lineNum && lineNum <= end.lineNum) {
@@ -131,7 +157,7 @@ case object TextStateStream extends TextState
 case object TextStateColor extends TextState
 case object TextStateEscape extends TextState
 
-class Text {
+class Text(var profileConfig: ProfileConfig) {
 
   import Text.log
   private val lines = scala.collection.mutable.Map[Long, Line]()
@@ -149,7 +175,7 @@ class Text {
       if(numLines <= 0 || lineNum < 0) {
         rv
       } else {
-        val toadd = lines.getOrElse(lineNum, EmptyLine(lineNum)).mergeCommands.split(wrapAt)
+        val toadd = lines.getOrElse(lineNum, EmptyLine(lineNum)).mergeCommands(profileConfig).flatMap(_.split(wrapAt))
         get(numLines - toadd.size, lineNum - 1, toadd ++ rv)
       }
     }
@@ -158,18 +184,18 @@ class Text {
     rv.drop(rv.length - numLines)
   }
 
-  def length = synchronized(botLine)
+  def length: Long = synchronized(botLine)
 
-  def addCommand(lineNum: Long, cmd: String) = synchronized {
+  def addCommand(lineNum: Long, cmd: String): Unit = synchronized {
     val line = lines(lineNum)
     lines(lineNum) = line.copy(commands = line.commands :+ cmd)
   }
 
-  def addLine(txt: String) = synchronized {
+  def addLine(txt: String): Unit = synchronized {
     setLine(botLine + 1, txt)
   }
 
-  def setLine(lineNum: Long, txt: String) = synchronized {
+  def setLine(lineNum: Long, txt: String): Unit = synchronized {
     if (txt.contains("\n")) throw new Exception("text should not contain newline")
 
     var colorCode : ColorCode = DefaultColorCode
@@ -281,10 +307,10 @@ object Text {
 }
 
 case class TextPos(lineNum: Long, pos: Int) extends Comparable[TextPos] {
-  def <(o: TextPos) = this.compareTo(o) < 0
-  def >(o: TextPos) = this.compareTo(o) > 0
-  def <=(o: TextPos) = this.compareTo(o) <= 0
-  def >=(o: TextPos) = this.compareTo(o) >= 0
+  def <(o: TextPos): Boolean = this.compareTo(o) < 0
+  def >(o: TextPos): Boolean = this.compareTo(o) > 0
+  def <=(o: TextPos): Boolean = this.compareTo(o) <= 0
+  def >=(o: TextPos): Boolean = this.compareTo(o) >= 0
 
   override def compareTo(o: TextPos): Int = {
     if (lineNum > o.lineNum) {

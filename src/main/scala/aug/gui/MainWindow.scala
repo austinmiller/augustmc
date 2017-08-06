@@ -7,7 +7,6 @@ import javax.swing._
 
 import aug.gui.settings.SettingsWindow
 import aug.io.{ConnectionManager, SystemLog, TransparentColor}
-import aug.macros.Class2Map
 import aug.profile.{ConfigManager, Profile}
 import aug.util.Util
 import com.bulenkov.darcula.DarculaLaf
@@ -159,11 +158,7 @@ class MainWindow extends JFrame {
   })
 
   private def addProfileAction(jMenuItem: JMenuItem, callback: (Profile) => Unit) : Unit = {
-    jMenuItem.addActionListener(new ActionListener {
-      override def actionPerformed(e: ActionEvent): Unit = {
-        tabbedPane.active.map(_.profile).foreach(callback)
-      }
-    })
+    jMenuItem.addActionListener((e: ActionEvent) => tabbedPane.active.map(_.profile).foreach(callback))
   }
 
   private def openProfile(): Unit = new OpenProfileDialog(this)
@@ -221,7 +216,7 @@ object Main extends App {
   }
 
   def exit(): Unit = {
-    ConfigManager.closeAllProfiles
+    ConfigManager.closeAllProfiles()
     ConnectionManager.close()
     Frame.getFrames.foreach(_.dispose())
     System.exit(0)

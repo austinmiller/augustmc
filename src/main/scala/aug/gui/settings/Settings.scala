@@ -14,7 +14,7 @@ import scala.collection.mutable
 import scala.util.{Failure, Try}
 
 class SettingsNode(name: String, component: Component, panel: JPanel) extends DefaultMutableTreeNode(name) {
-  def onSelection = {
+  def onSelection(): Unit = {
     panel.removeAll()
     panel.add(component, BorderLayout.CENTER)
     panel.revalidate()

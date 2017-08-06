@@ -10,19 +10,19 @@ import aug.util.Util
 
 class RegexTextField(pattern: String, columns: Int, valueChangedCallback: () => Unit) extends JTextField(columns) {
 
-  val textFieldBg = getBackground
+  private val textFieldBg = getBackground
   setMaximumSize(getPreferredSize)
-  val errorBg = new Color(255, 85, 85)
+  private val errorBg = new Color(255, 85, 85)
 
   def isTextValid : Boolean = getText.matches(pattern)
 
-  private def valueChanged = {
+  private def valueChanged(): Unit = {
     valueChangedCallback()
 
     if (pattern.length == 0 || isTextValid) {
       setBackground(textFieldBg)
     } else {
-      if (getText.trim.size > 0) {
+      if (getText.trim.nonEmpty) {
         setBackground(errorBg)
       } else {
         setBackground(textFieldBg)
@@ -31,9 +31,9 @@ class RegexTextField(pattern: String, columns: Int, valueChangedCallback: () => 
   }
 
   getDocument.addDocumentListener(new DocumentListener {
-    override def insertUpdate(e: DocumentEvent): Unit = valueChanged
-    override def changedUpdate(e: DocumentEvent): Unit = valueChanged
-    override def removeUpdate(e: DocumentEvent): Unit = valueChanged
+    override def insertUpdate(e: DocumentEvent): Unit = valueChanged()
+    override def changedUpdate(e: DocumentEvent): Unit = valueChanged()
+    override def removeUpdate(e: DocumentEvent): Unit = valueChanged()
   })
 }
 
@@ -96,11 +96,13 @@ class EnabledBox[T](onSelection: => T) extends JComboBox[String](Array("disabled
     if (bool) setSelectedItem("enabled") else setSelectedItem("disabled")
   }
 
-  def isSelectionEnabled = getSelectedItem == "enabled"
+  def isSelectionEnabled: Boolean = getSelectedItem == "enabled"
 
-  addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = onSelection
-  })
+  addActionListener((e: ActionEvent) => onSelection)
+}
+
+class CheckBox[T](onSelection: => T) extends JCheckBox {
+  addActionListener((e: ActionEvent) => onSelection)
 }
 
 class FontChooserButton(profileConfigPanel: ProfileConfigPanel) extends JButton {
@@ -109,9 +111,7 @@ class FontChooserButton(profileConfigPanel: ProfileConfigPanel) extends JButton 
 
   setText("placeholder")
 
-  addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = fontChooser
-  })
+  addActionListener((e: ActionEvent) => fontChooser())
 
   def getSelectedFont = FontConfig(family, fontSize)
 
@@ -122,12 +122,12 @@ class FontChooserButton(profileConfigPanel: ProfileConfigPanel) extends JButton 
       if (this.family != "") profileConfigPanel.setDirty()
       this.family = family
       this.fontSize = fontSize
-      setText(s"${family}, ${fontSize}")
+      setText(s"$family, $fontSize")
       repaint()
     }
   }
 
-  private def fontChooser : Unit = {
+  private def fontChooser() : Unit = {
     val fc = new FontChooser(profileConfigPanel)
     if (family == "default") {
       fc.fontList.setSelectedIndex(0)
@@ -159,6 +159,9 @@ class FontChooserButton(profileConfigPanel: ProfileConfigPanel) extends JButton 
 class GridPanel extends JPanel {
   setLayout(new GridBagLayout)
   protected val c = new GridBagConstraints()
+
+  object NoInsets extends Insets(0, 0, 0, 0)
+  object LeftInsets extends Insets(0, 10, 0, 0)
 
   def addToGrid(comp: Component, x: Int, y: Int, xw: Int = 1, xy: Int = 1, xl: Int = 1, yl: Int = 1) : Unit = {
     c.gridx = x

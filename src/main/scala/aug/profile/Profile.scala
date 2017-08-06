@@ -3,7 +3,6 @@ package aug.profile
 import java.awt.Component
 import java.io.File
 import java.lang.Boolean
-import java.lang.Thread.UncaughtExceptionHandler
 import java.util
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
@@ -42,7 +41,7 @@ abstract class AbstractProfileEvent(major: Int, minor : Long) extends ProfileEve
 
 private[profile] object EventId {
   private val next = new AtomicLong(0)
-  def nextId = next.incrementAndGet()
+  def nextId: Long = next.incrementAndGet()
 }
 
 case class CloseProfile() extends AbstractProfileEvent(Int.MinValue, EventId.nextId)
@@ -70,7 +69,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   import Util.Implicits._
 
   val profilePanel = new ProfilePanel(mainWindow, this)
-  val name = profileConfig.name
+  val name: String = profileConfig.name
   val slog = new PrefixSystemLog(s"[$name]: ", mainWindow.slog)
   mainWindow.tabbedPane.addProfile(name, profilePanel)
 
@@ -90,15 +89,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var fragment: String = ""
   private var clientReloadData = new ReloadData
 
-  val console = new SplittableTextArea(this)
+  val console = new SplittableTextArea(profileConfig, this)
   windows("console") = console
 
   addLine("profile: " + profileConfig.name)
 
-  thread.setUncaughtExceptionHandler(new UncaughtExceptionHandler {
-    override def uncaughtException(t: Thread, e: Throwable): Unit = {
-      e.printStackTrace()
-    }
+  thread.setUncaughtExceptionHandler((t: Thread, e: Throwable) => {
+    e.printStackTrace()
   })
 
   thread.start()
@@ -118,23 +115,24 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   offer(ProfileLog(true, false))
   offer(ProfileLog(true, true))
 
-  def setProfileConfig(profileConfig: ProfileConfig) = synchronized {
+  def setProfileConfig(profileConfig: ProfileConfig): Unit = synchronized {
     this.profileConfig = profileConfig
     profilePanel.setProfileConfig(profileConfig)
     windows.values.foreach({ w =>
+      w.setProfileConfig(profileConfig)
       w.setActiveFont(profileConfig.consoleWindow.font.toFont)
       w.repaint()
     })
   }
 
-  def connect() = offer(ProfileConnect())
+  def connect(): Unit = offer(ProfileConnect())
 
-  def reconnect() = {
+  def reconnect(): Unit = {
     offer(ProfileDisconnect())
     offer(ProfileConnect())
   }
 
-  def disconnect() = offer(ProfileDisconnect())
+  def disconnect(): Unit = offer(ProfileDisconnect())
 
   private def threadLoop() : Unit = {
     while(running.get()) {
@@ -272,20 +270,20 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   }
 
 
-  def mongoStart() = offer(MongoStart())
+  def mongoStart(): Unit = offer(MongoStart())
 
-  def mongoStop() = offer(MongoStop())
+  def mongoStop(): Unit = offer(MongoStop())
 
-  def mongoRestart() = {
+  def mongoRestart(): Unit = {
     offer(MongoStop())
     offer(MongoStart())
   }
 
-  def clientStart() = offer(ClientStart())
+  def clientStart(): Unit = offer(ClientStart())
 
-  def clientStop() = offer(ClientStop())
+  def clientStop(): Unit = offer(ClientStop())
 
-  def clientRestart() = {
+  def clientRestart(): Unit = {
     offer(ClientStop())
     offer(ClientStart())
   }
@@ -486,10 +484,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     profilePanel.setContents(component)
 
     // really terrible hack
-    Util.invokeLater(10, () => SwingUtilities.invokeLater(new Runnable {
-      override def run(): Unit = {
-        dividerLocations.foreach(s => s._1.setDividerLocation(s._2))
-      }
+    Util.invokeLater(10, () => SwingUtilities.invokeLater(() => {
+      dividerLocations.foreach(s => s._1.setDividerLocation(s._2))
     }))
 
     true
@@ -508,7 +504,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     */
   private[profile] def createTextWindow(name: String): TextWindowInterface = {
     windows.getOrElseUpdate(name, {
-      val sta = new SplittableTextArea(this, false)
+      val sta = new SplittableTextArea(profileConfig, this, false)
       sta.setActiveFont(profileConfig.consoleWindow.font.toFont)
       sta
     })

@@ -70,7 +70,7 @@ case class FontConfig(
                      ) {
   private def this() = this("default")
 
-  def toFont = {
+  def toFont: Font = {
     if (family == "default") {
       Util.defaultFont.deriveFont(size)
     } else new Font(family, 0, size)
@@ -94,7 +94,10 @@ case class MongoConfig(
 case class WindowConfig(
                        name: String = "console",
                        font: FontConfig = FontConfig(),
-                       colorScheme: String = "default"
+                       colorScheme: String = "default",
+                       echoCommands: Boolean = true,
+                       cmdsOnNewLine: Boolean = false,
+                       stackCmds: Boolean = true
                      ) {
   private def this() = this("")
 }
@@ -115,7 +118,7 @@ case class ProfileConfig(
                           telnetConfig: TelnetConfig = TelnetConfig(),
                           javaConfig: JavaConfig = JavaConfig(),
                           commandLineFont: FontConfig = FontConfig(),
-                          consoleWindow: WindowConfig = WindowConfig("console"),
+                          consoleWindow: WindowConfig = WindowConfig(),
                           mongoConfig: MongoConfig = MongoConfig()
                      ) {
   private def this() = this("")
@@ -135,7 +138,7 @@ object ConfigManager {
   private val mainConfigMarshaller = mainConfigContext.createMarshaller()
   mainConfigMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
 
-  val configDir = {
+  val configDir: File = {
     val homeDir = System.getProperty("user.home")
 
     val configDirName = System.getProperty("aug.profile.ConfigManager.configDir", "augustmc")
@@ -150,7 +153,7 @@ object ConfigManager {
     configDir
   }
 
-  val profilesDir = {
+  private val profilesDir = {
     val nd = new File(configDir, "profiles")
 
     if (!nd.exists) {
@@ -161,7 +164,7 @@ object ConfigManager {
     nd
   }
 
-  def getClientDir(name: String) = {
+  def getClientDir(name: String): File = {
     val f = new File(profilesDir, s"$name/client")
     f.mkdir()
     f
@@ -169,7 +172,7 @@ object ConfigManager {
 
   val mainConfigPath = new File(configDir, "mainConfig.xml")
 
-  def setMainConfig(mainConfig: MainConfig) = {
+  def setMainConfig(mainConfig: MainConfig): Unit = {
     synchronized {
       this.mainConfig = mainConfig
 
@@ -179,45 +182,45 @@ object ConfigManager {
     }
   }
 
-  def activateProfile(name: String, mainWindow: MainWindow) = synchronized {
+  def activateProfile(name: String, mainWindow: MainWindow): Unit = synchronized {
     activeProfiles(name) = new Profile(profiles(name), mainWindow)
   }
 
-  def getUnactivedProfiles = synchronized {
+  def getUnactivedProfiles: List[String] = synchronized {
     val keys = activeProfiles.keySet
     profiles.keys.filter(!keys.contains(_)).toList
   }
 
-  def getActiveProfiles = synchronized(activeProfiles.keys)
+  def getActiveProfiles: Iterable[String] = synchronized(activeProfiles.keys)
 
   def getProfileDir(name: String) = new File(profilesDir, name)
 
-  def getProfiles = synchronized(profiles.values.toList)
+  def getProfiles: List[ProfileConfig] = synchronized(profiles.values.toList)
 
   def getProfile(name: String) : Option[ProfileConfig] = synchronized {
     profiles.get(name)
   }
 
-  def setProfile(profileConfig: ProfileConfig) = synchronized {
+  def setProfile(profileConfig: ProfileConfig): Unit = synchronized {
     profiles(profileConfig.name) = profileConfig
     saveProfile(profileConfig.name)
     activeProfiles.get(profileConfig.name).foreach(_.setProfileConfig(profileConfig))
   }
 
-  def deactivateProfile(name: String) = synchronized {
+  def deactivateProfile(name: String): Unit = synchronized {
     activeProfiles.get(name).foreach { profile=>
-      profile.close
+      profile.close()
     }
 
     activeProfiles.remove(name)
   }
 
-  def closeAllProfiles = synchronized( {
+  def closeAllProfiles(): Unit = synchronized( {
     activeProfiles.keys.foreach(deactivateProfile)
     activeProfiles.clear()
   })
 
-  private def saveProfile(name: String) = synchronized {
+  private def saveProfile(name: String): Unit = synchronized {
     profiles.get(name).foreach { pc =>
       val dir = new File(profilesDir, name)
 
@@ -234,7 +237,7 @@ object ConfigManager {
     }
   }
 
-  def getMainConfig = synchronized(mainConfig)
+  def getMainConfig: MainConfig = synchronized(mainConfig)
 
   def load() : Unit = {
     if (mainConfigPath.exists) {

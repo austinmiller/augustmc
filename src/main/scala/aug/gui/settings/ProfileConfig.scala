@@ -264,7 +264,7 @@ class JavaConfigPanel(settingsWindow: SettingsWindow, profileConfigPanel: Profil
   val toprow = new JavaOptionsPanel(profileConfigPanel)
 
   val mainClassPanel = new JPanel()
-  val etchedBorder = BorderFactory.createEtchedBorder()
+  private val etchedBorder = BorderFactory.createEtchedBorder()
   mainClassPanel.setBorder(BorderFactory.createTitledBorder(etchedBorder, "main class"))
   mainClassPanel.setLayout(new GridBagLayout)
   c.fill = GridBagConstraints.HORIZONTAL
@@ -341,7 +341,7 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
 
   loadProfileConfig(profileConfig)
 
-  def loadProfileConfig(profileConfig: ProfileConfig) = {
+  def loadProfileConfig(profileConfig: ProfileConfig): Unit = {
     this.profileConfig = profileConfig
 
     telnetConfigPanel.hostPanel.hostField.setText(profileConfig.telnetConfig.host)
@@ -357,6 +357,9 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
 
     uiConfigPanel.commandLineConfigPanel.fontButton.setSelectedFont(profileConfig.commandLineFont)
     uiConfigPanel.consoleWindowConfigPanel.fontButton.setSelectedFont(profileConfig.consoleWindow.font)
+    uiConfigPanel.consoleWindowConfigPanel.echoCheck.setSelected(profileConfig.consoleWindow.echoCommands)
+    uiConfigPanel.consoleWindowConfigPanel.stackCheck.setSelected(profileConfig.consoleWindow.stackCmds)
+    uiConfigPanel.consoleWindowConfigPanel.onNewLineCheck.setSelected(profileConfig.consoleWindow.cmdsOnNewLine)
 
     mongoConfigPanel.enabledBox.setSelectionEnabled(profileConfig.mongoConfig.enabled)
     mongoConfigPanel.userField.setText(profileConfig.mongoConfig.user)
@@ -367,7 +370,7 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
 
   def setDirty() : Unit = settingsWindow.setProfileDirty(profileConfig.name)
 
-  def constructProfileConfig = {
+  def constructProfileConfig: ProfileConfig = {
     def toInt(string: String, orig: Int) = {
       Try {
         string.toInt
@@ -402,8 +405,10 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
         size = uiConfigPanel.commandLineConfigPanel.fontButton.fontSize
       ),
       consoleWindow = WindowConfig(
-        "console",
-        font = uiConfigPanel.consoleWindowConfigPanel.fontButton.getSelectedFont
+        font = uiConfigPanel.consoleWindowConfigPanel.fontButton.getSelectedFont,
+        echoCommands = uiConfigPanel.consoleWindowConfigPanel.echoCheck.isSelected,
+        stackCmds = uiConfigPanel.consoleWindowConfigPanel.stackCheck.isSelected,
+        cmdsOnNewLine = uiConfigPanel.consoleWindowConfigPanel.onNewLineCheck.isSelected
       ),
       mongoConfig = MongoConfig(
         enabled = mongoConfigPanel.enabledBox.isSelectionEnabled,
@@ -419,12 +424,12 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
 class ProfilesConfigPanel(settingsWindow: SettingsWindow) extends JPanel {
   setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50))
 
-  val lbl = new JLabel("new profile name:")
-  val button = new JButton("create profile")
-  val textField = new JTextField(16)
-  val textFieldBg = textField.getBackground
+  private val lbl = new JLabel("new profile name:")
+  private val button = new JButton("create profile")
+  private val textField = new JTextField(16)
+  private val textFieldBg = textField.getBackground
   textField.setMaximumSize(textField.getPreferredSize)
-  val errorBg = new Color(255, 85, 85)
+  private val errorBg = new Color(255, 85, 85)
 
   setLayout(new BoxLayout(this, BoxLayout.Y_AXIS))
 
@@ -436,9 +441,9 @@ class ProfilesConfigPanel(settingsWindow: SettingsWindow) extends JPanel {
   button.setAlignmentX(Component.CENTER_ALIGNMENT)
   add(button)
 
-  clear
+  clear()
 
-  private def clear = {
+  private def clear(): Unit = {
     textField.setText("")
     button.setEnabled(false)
   }
@@ -448,14 +453,14 @@ class ProfilesConfigPanel(settingsWindow: SettingsWindow) extends JPanel {
     txt.matches("^[a-zA-Z0-9 \\-_]{1,16}$") && txt != "system" && !settingsWindow.profiles.contains(txt)
   }
 
-  private def valueChanged = {
+  private def valueChanged(): Unit = {
     if (isTextValid) {
       textField.setBackground(textFieldBg)
       button.setEnabled(true)
     } else {
       button.setEnabled(false)
 
-      if (textField.getText.trim.size > 0) {
+      if (textField.getText.trim.nonEmpty) {
         textField.setBackground(errorBg)
       } else {
         textField.setBackground(textFieldBg)
@@ -463,32 +468,28 @@ class ProfilesConfigPanel(settingsWindow: SettingsWindow) extends JPanel {
     }
   }
 
-  private def submit = {
+  private def submit(): Unit = {
     val newname = textField.getText.trim
-    clear
+    clear()
     settingsWindow.addProfile(newname)
   }
 
   textField.getDocument.addDocumentListener(new DocumentListener {
-    override def insertUpdate(e: DocumentEvent): Unit = valueChanged
-    override def changedUpdate(e: DocumentEvent): Unit = valueChanged
-    override def removeUpdate(e: DocumentEvent): Unit = valueChanged
+    override def insertUpdate(e: DocumentEvent): Unit = valueChanged()
+    override def changedUpdate(e: DocumentEvent): Unit = valueChanged()
+    override def removeUpdate(e: DocumentEvent): Unit = valueChanged()
   })
 
   textField.addKeyListener(new KeyListener {
     override def keyTyped(e: KeyEvent): Unit = {}
     override def keyPressed(e: KeyEvent): Unit = {}
     override def keyReleased(e: KeyEvent): Unit = {
-      if (e.getKeyCode() == KeyEvent.VK_ENTER && button.isEnabled) {
-        submit
+      if (e.getKeyCode == KeyEvent.VK_ENTER && button.isEnabled) {
+        submit()
       }
     }
   })
 
-  button.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = {
-      submit
-    }
-  })
+  button.addActionListener((e: ActionEvent) => submit())
 
 }
