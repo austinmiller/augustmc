@@ -43,7 +43,6 @@ case class ColorSchemeConfig(
 case class TelnetConfig(
                          host: String = "",
                          port: Int = 23,
-                         fragmentTimeout: Long = 250,
                          echo: Boolean = true,
                          mccpEnabled: Boolean = true,
                          gmcpEnabled: Boolean = true,
