@@ -1,9 +1,10 @@
 package aug.gui
 
-import java.awt.Font
+import java.awt.{Font, Toolkit}
 import java.awt.event.{ActionEvent, KeyEvent, KeyListener}
-import javax.swing.event.{CaretEvent, CaretListener}
 import javax.swing._
+import javax.swing.event.CaretEvent
+import javax.swing.text.DefaultEditorKit
 
 import aug.io.SidePanelColor
 import aug.profile.{Profile, UserCommand}
@@ -15,13 +16,12 @@ object CommandLine {
   val log = Logger(LoggerFactory.getLogger(CommandLine.getClass))
 }
 
-
 class CommandLine(profile: Profile) extends JTextArea with KeyListener {
 
-  val log = CommandLine.log
+  private val log = CommandLine.log
 
-  val history = new RingBuffer[String](20)
-  var historyIndex = -1
+  private val history = new RingBuffer[String](20)
+  private var historyIndex = -1
 
   setFont(new Font("Courier New", Font.PLAIN, 20))
 
@@ -37,13 +37,23 @@ class CommandLine(profile: Profile) extends JTextArea with KeyListener {
     override def actionPerformed(e: ActionEvent): Unit = profile.copyText()
   })
 
+  // prevent this thing from beeping, ugh
+  private val deleteAction = getActionMap.get("delete-previous")
+  getActionMap.put("delete-previous", new AbstractAction() {
+    override def actionPerformed(e: ActionEvent): Unit = {
+      if (getText.nonEmpty) {
+        deleteAction.actionPerformed(e)
+      }
+    }
+  })
+
   def process(e: KeyEvent) {
     if(!e.isConsumed || e.getComponent.equals(this)) return
 
     processKeyEvent(e)
   }
 
-  def execute(msg: String) = {
+  private def execute(msg: String): Unit = {
     log.trace("executing: {}",msg)
 
     if(history(0) != msg) history.push(msg)
@@ -82,11 +92,9 @@ class CommandLine(profile: Profile) extends JTextArea with KeyListener {
 
   override def keyReleased(e: KeyEvent): Unit = {}
 
-  addCaretListener(new CaretListener {
-    override def caretUpdate(e: CaretEvent): Unit = {
-      if (e.getDot != e.getMark) {
-        profile.highlight = Some(getSelectedText)
-      }
+  addCaretListener((e: CaretEvent) => {
+    if (e.getDot != e.getMark) {
+      profile.highlight = Some(getSelectedText)
     }
   })
 }
