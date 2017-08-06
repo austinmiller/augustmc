@@ -89,7 +89,11 @@ class FontChooser(profileConfigPanel: ProfileConfigPanel) extends ProfileDialog(
   addKeyListener(kl)
 }
 
-class EnabledBox[T](onSelection: => T) extends JComboBox[String](Array("disabled", "enabled")) {
+class ComboBox[T](options: Array[String], onSelection: => T) extends JComboBox[String](options) {
+  addActionListener((e: ActionEvent) => onSelection)
+}
+
+class EnabledBox[T](onSelection: => T) extends ComboBox[T](Array("disabled", "enabled"), onSelection) {
   def setSelectionEnabled(bool: String): Unit = setSelectionEnabled(bool.toBoolean)
 
   def setSelectionEnabled(bool: Boolean): Unit = {
@@ -97,8 +101,6 @@ class EnabledBox[T](onSelection: => T) extends JComboBox[String](Array("disabled
   }
 
   def isSelectionEnabled: Boolean = getSelectedItem == "enabled"
-
-  addActionListener((e: ActionEvent) => onSelection)
 }
 
 class CheckBox[T](onSelection: => T) extends JCheckBox {
@@ -160,10 +162,11 @@ class GridPanel extends JPanel {
   setLayout(new GridBagLayout)
   protected val c = new GridBagConstraints()
 
-  object NoInsets extends Insets(0, 0, 0, 0)
-  object LeftInsets extends Insets(0, 10, 0, 0)
+  protected object NoInsets extends Insets(0, 0, 0, 0)
+  protected object LeftInsets extends Insets(0, 10, 0, 0)
+  protected object RightInsets extends Insets(0, 0, 0, 10)
 
-  def addToGrid(comp: Component, x: Int, y: Int, xw: Int = 1, xy: Int = 1, xl: Int = 1, yl: Int = 1) : Unit = {
+  protected def addToGrid(comp: Component, x: Int, y: Int, xw: Int = 1, xy: Int = 1, xl: Int = 1, yl: Int = 1) : Unit = {
     c.gridx = x
     c.gridy = y
     c.weightx = xw
@@ -173,25 +176,25 @@ class GridPanel extends JPanel {
     add(comp, c)
   }
 
-  def margins(top: Int = 0, left: Int = 0, bot: Int = 0, right: Int = 0): Unit = {
+  protected def margins(top: Int = 0, left: Int = 0, bot: Int = 0, right: Int = 0): Unit = {
     c.insets = new Insets(top, left, bot, right)
   }
 
-  def fillHorizontal(x: Int, y: Int): Unit = {
+  protected def fillHorizontal(x: Int, y: Int): Unit = {
     addToGrid(new JPanel, x, y, 100)
   }
 
-  def fillVertical(x: Int, y: Int): Unit = {
+  protected def fillVertical(x: Int, y: Int): Unit = {
     addToGrid(new JPanel, x, y, 1, 100)
   }
 
-  def setTitledBorder(title: String) : Unit = {
+  protected def setTitledBorder(title: String) : Unit = {
     setBorder(BorderFactory.createTitledBorder(
       BorderFactory.createEtchedBorder(),
       title))
   }
 
-  def setMargin(margin: Int): Unit = {
+  protected def setMargin(margin: Int): Unit = {
     setBorder(BorderFactory.createEmptyBorder(margin, margin, margin, margin))
   }
 }

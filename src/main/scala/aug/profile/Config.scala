@@ -119,7 +119,8 @@ case class ProfileConfig(
                           javaConfig: JavaConfig = JavaConfig(),
                           commandLineFont: FontConfig = FontConfig(),
                           consoleWindow: WindowConfig = WindowConfig(),
-                          mongoConfig: MongoConfig = MongoConfig()
+                          mongoConfig: MongoConfig = MongoConfig(),
+                          autoLog: String = "none"
                      ) {
   private def this() = this("")
 }

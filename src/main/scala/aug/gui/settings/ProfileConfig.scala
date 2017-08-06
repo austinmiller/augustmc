@@ -360,6 +360,7 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
     uiConfigPanel.consoleWindowConfigPanel.echoCheck.setSelected(profileConfig.consoleWindow.echoCommands)
     uiConfigPanel.consoleWindowConfigPanel.stackCheck.setSelected(profileConfig.consoleWindow.stackCmds)
     uiConfigPanel.consoleWindowConfigPanel.onNewLineCheck.setSelected(profileConfig.consoleWindow.cmdsOnNewLine)
+    uiConfigPanel.loggingConfigPanel.autoLogCombo.setSelectedItem(profileConfig.autoLog)
 
     mongoConfigPanel.enabledBox.setSelectionEnabled(profileConfig.mongoConfig.enabled)
     mongoConfigPanel.userField.setText(profileConfig.mongoConfig.user)
@@ -416,7 +417,8 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
         password = mongoConfigPanel.passField.getText,
         db = mongoConfigPanel.dbField.getText,
         host = mongoConfigPanel.hostField.getText
-      )
+      ),
+      autoLog = uiConfigPanel.loggingConfigPanel.autoLogCombo.getSelectedItem.toString
     )
   }
 }

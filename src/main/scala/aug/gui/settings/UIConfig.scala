@@ -1,7 +1,7 @@
 package aug.gui.settings
 
 import java.awt.GridBagConstraints
-import javax.swing.{BorderFactory, JCheckBox, JLabel}
+import javax.swing.{BorderFactory, JLabel}
 
 class CommandLineConfigPanel(profileConfigPanel: ProfileConfigPanel) extends GridPanel {
   val fontButton = new FontChooserButton(profileConfigPanel)
@@ -49,16 +49,32 @@ class WindowConfigPanel(profileConfigPanel: ProfileConfigPanel) extends GridPane
   setTitledBorder("console")
 }
 
+class LoggingConfigPanel(profileConfigPanel: ProfileConfigPanel) extends GridPanel {
+  private val autoLogLabel = new JLabel("autolog")
+  val autoLogCombo = new ComboBox(Array("none", "without color", "with color", "both"), profileConfigPanel.setDirty())
+
+  c.insets = LeftInsets
+  addToGrid(autoLogLabel, 0, 0)
+  c.insets = NoInsets
+  addToGrid(autoLogCombo, 1, 0)
+
+  fillHorizontal(2, 0)
+
+  setTitledBorder("logging")
+}
+
 class UIConfigPanel(profileConfigPanel: ProfileConfigPanel) extends GridPanel {
 
   val commandLineConfigPanel = new CommandLineConfigPanel(profileConfigPanel)
   val consoleWindowConfigPanel = new WindowConfigPanel(profileConfigPanel)
+  val loggingConfigPanel = new LoggingConfigPanel(profileConfigPanel)
 
   c.fill = GridBagConstraints.HORIZONTAL
   addToGrid(commandLineConfigPanel, 0, 0)
   addToGrid(consoleWindowConfigPanel, 0, 1)
+  addToGrid(loggingConfigPanel, 0, 2)
 
-  fillVertical(0, 2)
+  fillVertical(0, 3)
 
   setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10))
 }

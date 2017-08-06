@@ -112,8 +112,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     offer(MongoStart())
   }
 
-  offer(ProfileLog(true, false))
-  offer(ProfileLog(true, true))
+  if (profileConfig.autoLog == "without color" || profileConfig.autoLog == "both") {
+    offer(ProfileLog(true, false))
+  }
+
+  if (profileConfig.autoLog == "with color" || profileConfig.autoLog == "both") {
+    offer(ProfileLog(true, true))
+  }
 
   def setProfileConfig(profileConfig: ProfileConfig): Unit = synchronized {
     this.profileConfig = profileConfig
