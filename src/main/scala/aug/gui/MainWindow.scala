@@ -26,8 +26,6 @@ class MainWindow extends JFrame {
   val slog = new SystemLog(systemPanel, tabbedPane)
   slog.raw(Util.fullName)
 
-
-
   val menus = new JMenuBar
 
   val settingsWindow = new SettingsWindow(this)
@@ -114,6 +112,7 @@ class MainWindow extends JFrame {
   private val windowMenu = new JMenu("window")
   private val selectTabMenu = new JMenu("select tab")
   private val copyTextMenuItem = new JMenuItem("copy text")
+  private val unsplitAllTextMenuItem = new JMenuItem("unsplit all")
 
   for (i <- 0 to 9) {
     val selectTabMenuItem = new JMenuItem(s"select tab $i")
@@ -123,11 +122,14 @@ class MainWindow extends JFrame {
   }
 
   copyTextMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr C"))
+  unsplitAllTextMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr U"))
 
   copyTextMenuItem.addActionListener(tabbedPane.getSelectedComponent.asInstanceOf[HasHighlight].copyText())
+  addProfileAction(unsplitAllTextMenuItem, (profile: Profile) => profile.unsplitAll())
 
   windowMenu.add(selectTabMenu)
   windowMenu.add(copyTextMenuItem)
+  windowMenu.add(unsplitAllTextMenuItem)
 
   // add all main menus
 

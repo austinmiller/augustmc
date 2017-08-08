@@ -273,6 +273,8 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     slog.info(s"event thread exiting")
   }
 
+  def unsplitAll(): Unit = windows.values.foreach(_.unsplit())
+
   def offer(event: ProfileEvent): Unit = {
     if (!threadQueue.offer(event)) {
       slog.error(f"failed to offer event $event")
