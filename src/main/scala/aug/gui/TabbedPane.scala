@@ -2,6 +2,7 @@ package aug.gui
 
 import java.awt._
 import javax.swing.border.EmptyBorder
+import javax.swing.event.ChangeEvent
 import javax.swing.{JPanel, JTabbedPane}
 
 import aug.profile.ProfileConfig
@@ -23,6 +24,8 @@ class SystemPanel(mainWindow: MainWindow) extends JPanel with HasHighlight {
 
 class TabbedPane(mainWindow: MainWindow) extends JTabbedPane {
 
+  private var errors = 0
+
   setUI(new DarculaTabbedPaneUI() {
     override def paintFocusIndicator(g: Graphics, tabPlacement: Int, rects: Array[Rectangle], tabIndex: Int,
                                      iconRect: Rectangle, textRect: Rectangle, isSelected: Boolean): Unit = {}
@@ -40,4 +43,18 @@ class TabbedPane(mainWindow: MainWindow) extends JTabbedPane {
     addTab(name, profilePanel)
     setSelectedComponent(profilePanel)
   }
+
+  def addError(): Unit = {
+    if(getSelectedIndex != 0) {
+      errors += 1
+      setTitleAt(0, s"system [$errors]")
+    }
+  }
+
+  addChangeListener((e: ChangeEvent) => {
+    if (getSelectedIndex == 0 && errors != 0) {
+      setTitleAt(0, "system")
+      errors = 0
+    }
+  })
 }

@@ -231,7 +231,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 schedulerState = scr.schedulerState
                 clientReloadData = scr.shutdown()
               case None =>
-                slog.error(f"no client to shutdown")
+                slog.info(f"no client to shutdown")
             }
 
           case SendData(cmds, silent) => sendNow(cmds, silent)

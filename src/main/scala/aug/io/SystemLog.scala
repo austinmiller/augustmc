@@ -3,7 +3,7 @@ package aug.io
 import java.text.SimpleDateFormat
 import java.util.Date
 
-import aug.gui.SystemPanel
+import aug.gui.{SystemPanel, TabbedPane}
 import aug.util.Util
 import org.apache.commons.lang.exception.ExceptionUtils
 
@@ -21,7 +21,7 @@ class PrefixSystemLog(prefix: String, systemLog: SystemLog) extends SystemLogInt
   override def raw(msg: String): Unit = systemLog.raw(msg)
 }
 
-class SystemLog(systemPanel: SystemPanel) extends SystemLogInterface {
+class SystemLog(systemPanel: SystemPanel, tabbedPane: TabbedPane) extends SystemLogInterface {
   val dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss")
   private var lineNum : Long = 0
 
@@ -35,9 +35,14 @@ class SystemLog(systemPanel: SystemPanel) extends SystemLogInterface {
   }
 
   override def info(msg: String): Unit = log("INFO", "37", msg)
-  override def error(msg: String): Unit = log("ERROR", "31", msg)
+  override def error(msg: String): Unit = {
+    log("ERROR", "31", msg)
+    tabbedPane.addError()
+  }
+
   override def error(msg: String, throwable: Throwable): Unit = {
     log("ERROR", "31", s"$msg\n${ExceptionUtils.getStackTrace(throwable)}")
+    tabbedPane.addError()
   }
 
   private def log(category: String, colorCode: String, msg: String) = {

@@ -20,11 +20,13 @@ class MainWindow extends JFrame {
   import Util.Implicits._
 
   val systemPanel = new SystemPanel(this)
-  val slog = new SystemLog(systemPanel)
-  slog.raw(Util.fullName)
-
   val tabbedPane = new TabbedPane(this)
   tabbedPane.addTab("system", systemPanel)
+
+  val slog = new SystemLog(systemPanel, tabbedPane)
+  slog.raw(Util.fullName)
+
+
 
   val menus = new JMenuBar
 
