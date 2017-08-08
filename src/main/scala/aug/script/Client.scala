@@ -5,7 +5,7 @@ import java.net.{URL, URLClassLoader}
 import java.util.concurrent.{Callable, Executors, TimeUnit}
 
 import aug.profile._
-import aug.script.framework.{ClientInterface, ProfileInterface, ReloadData, RunnableReloader}
+import aug.script.framework._
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -162,8 +162,8 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   def handleEvent(runnable: Runnable): Unit = execute(runnable.run())
   override def init(profile: ProfileInterface, reloadData: ReloadData): Unit = execute(client.init(profile, reloadData))
   override def onConnect(id: Long, url: String, port: Int): Unit = execute(client.onConnect(id, url, port))
-  override def handleLine(lineNum: Long, line: String): Boolean = execute(client.handleLine(lineNum, line))
-  override def handleFragment(s: String): Unit = execute(client.handleFragment(s))
+  override def handleLine(lineEvent: LineEvent): Boolean = execute(client.handleLine(lineEvent))
+  override def handleFragment(lineEvent: LineEvent): Unit = execute(client.handleFragment(lineEvent))
   override def onDisconnect(id: Long): Unit = execute(client.onDisconnect(id))
   override def handleGmcp(s: String): Unit = execute(client.handleGmcp(s))
   override def handleCommand(s: String): Boolean = execute(client.handleCommand(s))

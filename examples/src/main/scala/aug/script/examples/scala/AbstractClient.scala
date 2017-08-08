@@ -1,6 +1,6 @@
 package aug.script.examples.scala
 
-import aug.script.framework.{ClientInterface, ProfileInterface, ReloadData}
+import aug.script.framework.{ClientInterface, LineEvent, ProfileInterface, ReloadData}
 
 abstract class AbstractClient extends ClientInterface {
   protected var profile: ProfileInterface
@@ -11,9 +11,9 @@ abstract class AbstractClient extends ClientInterface {
 
   override def shutdown(): ReloadData = { new ReloadData }
 
-  override def handleLine(lineNum: Long, line: String): Boolean = { false }
+  override def handleLine(lineEvent: LineEvent): Boolean = { false }
 
-  override def handleFragment(fragment: String): Unit = {}
+  override def handleFragment(lineEvent: LineEvent): Unit = {}
 
   override def handleGmcp(gmcp: String): Unit = {}
 

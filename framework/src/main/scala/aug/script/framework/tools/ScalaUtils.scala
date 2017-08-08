@@ -7,6 +7,8 @@ import scala.collection.mutable
 
 object ScalaUtils {
 
+  def removeColors(string: String): String = string.replaceAll("\u001B\\[.*?m", "")
+
   def encodeArgs(strings: String*): String = encodeIterable(strings)
 
   def encodeArray(array: Array[String]): String = encodeIterable(array)

@@ -102,7 +102,7 @@ public interface ClientInterface {
      * <p>This line may have the last prompt the server sent prepended if the server does not send
      * newlines after prompts.</p>
      */
-    boolean handleLine(long lineNum, String line);
+    boolean handleLine(LineEvent lineEvent);
 
     /**
      * <p>Handle a fragment from the server.  Fragments are text sent by the server when the application has read all
@@ -129,7 +129,7 @@ public interface ClientInterface {
      * also trigger prompts off of handleLine.  It is guaranteed that every prompt will be sent via handleLine as
      * eventually the server will send a newline.</p>
      */
-    void handleFragment(String fragment);
+    void handleFragment(LineEvent lineEvent);
 
     /**
      * <p>Handle a GMCP message sent by the server.  If GMCP was not enabled, this will never be

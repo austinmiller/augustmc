@@ -153,8 +153,6 @@ object Util {
     }
   }
 
-  def removeColors(string: String): String = string.replaceAll("\u001B\\[.*?m", "")
-
   def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
   def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
 

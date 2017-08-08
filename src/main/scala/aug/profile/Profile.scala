@@ -393,7 +393,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           if (!clientTimedOut && client.isDefined) {
             Try {
-              client.get.handleFragment(fragment)
+              client.get.handleFragment(new LineEvent(lineNum, fragment))
             } match {
               case Failure(e: TimeoutException) => true
               case _ => clientTimedOut
@@ -405,7 +405,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           val didWeTimeout: Boolean = if (!clientTimedOut && client.isDefined) {
             Try {
-              if(!client.get.handleLine(lineNum, line)) {
+              if(!client.get.handleLine(new LineEvent(lineNum, line))) {
                 addLine(line)
               }
             } match {

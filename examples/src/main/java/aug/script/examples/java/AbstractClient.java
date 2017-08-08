@@ -1,6 +1,7 @@
 package aug.script.examples.java;
 
 import aug.script.framework.ClientInterface;
+import aug.script.framework.LineEvent;
 import aug.script.framework.ProfileInterface;
 import aug.script.framework.ReloadData;
 
@@ -19,12 +20,12 @@ public class AbstractClient implements ClientInterface {
     }
 
     @Override
-    public boolean handleLine(long lineNum, String line) {
+    public boolean handleLine(LineEvent lineEvent) {
         return false;
     }
 
     @Override
-    public void handleFragment(String fragment) {
+    public void handleFragment(LineEvent lineEvent) {
 
     }
 
