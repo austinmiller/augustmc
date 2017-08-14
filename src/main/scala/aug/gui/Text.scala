@@ -39,8 +39,10 @@ case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long
           val frag = Fragment(commands.mkString(" | "), ColorCode(TelnetColorYellow))
           builder += Line(List(frag), List.empty, lineNum, length)
         } else {
+          var pos = length
           commands.foreach { cmd =>
-            builder += Line(List(Fragment(cmd, ColorCode(TelnetColorYellow))), List.empty, lineNum, length)
+            builder += Line(List(Fragment(cmd, ColorCode(TelnetColorYellow))), List.empty, lineNum, pos)
+            pos += cmd.length + 3 // the " | " for stacking
           }
         }
       } else {
@@ -104,7 +106,9 @@ case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long
     lines.result
   }
 
-  def str: String = fragments.map(_.text).mkString
+  def str: String = {
+    fragments.map(_.text).mkString + commands.mkString(" | ")
+  }
 
   def highlight(start: TextPos, end: TextPos): Line = {
     if (lineNum >= start.lineNum && lineNum <= end.lineNum) {
