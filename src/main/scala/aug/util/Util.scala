@@ -1,21 +1,13 @@
 package aug.util
 
-import java.awt.event.{ActionEvent, ActionListener}
 import java.awt.image.BufferedImage
 import java.awt.{Color, Font, GraphicsEnvironment}
 import java.io._
 import java.nio.ByteBuffer
-import java.util.concurrent.{Callable, Executors}
-import java.util.jar.{Attributes, JarEntry, JarInputStream}
+import java.util.concurrent.{Executors, Future}
 import java.util.regex.Pattern
 
-import aug.profile.ConfigManager
-import aug.script.ScriptLoader
 import com.typesafe.scalalogging.Logger
-import org.apache.commons.io.IOUtils
-import org.reflections.Reflections
-import org.reflections.scanners.{ResourcesScanner, SubTypesScanner}
-import org.reflections.util.{ClasspathHelper, ConfigurationBuilder, FilterBuilder}
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable
@@ -28,11 +20,11 @@ object TryWith {
     Try(resource).flatMap(resourceInstance => {
       try {
         val returnValue = f(resourceInstance)
-        Try(resourceInstance.close).map(_ => returnValue)
+        Try(resourceInstance.close()).map(_ => returnValue)
       }  catch {
         case NonFatal(exceptionInFunction) =>
           try {
-            resourceInstance.close
+            resourceInstance.close()
             Failure(exceptionInFunction)
           } catch {
             case NonFatal(exceptionInClose) =>
@@ -69,18 +61,6 @@ class RingBuffer[A](val capacity: Int)(implicit m: ClassTag[A]) extends scala.co
 
 object Util {
 
-  object Implicits {
-    implicit def actionListener[T](f:  => T) : ActionListener = new ActionListener {
-      override def actionPerformed(e: ActionEvent): Unit = f
-    }
-
-    implicit def actionListener(f: ActionEvent => Unit) : ActionListener = new ActionListener {
-      override def actionPerformed(e: ActionEvent): Unit = f(e)
-    }
-
-    implicit def runnable(f: => Unit): Runnable = new Runnable() { def run() = f }
-  }
-
   private val tp = Executors.newCachedThreadPool()
 
   def time[T](f: => T): (Long, T) = {
@@ -95,15 +75,13 @@ object Util {
     t
   }
 
-  def run[T](f: => T) = tp.submit(new Callable[T] {
-    override def call(): T = f
-  })
+  def run[T](f: => T): Future[T] = tp.submit(() => f)
 
-  def invokeLater(f: () => Unit) = {
-    tp.submit(new Runnable { def run = f() })
+  def invokeLater(f: () => Unit): Future[_] = {
+    tp.submit(new Runnable { def run(): Unit = f() })
   }
 
-  def invokeLater(timeout: Long, f: () => Unit) = {
+  def invokeLater(timeout: Long, f: () => Unit): Future[_] = {
     tp.submit(new Runnable {
       override def run(): Unit = {
         Try {
@@ -121,39 +99,26 @@ object Util {
   val major = 2017
   val minor = 1
 
-  val colorEscapeCode = "\u001B"
-  val resetCode =s"${colorEscapeCode}[0m"
-
   def fullName : String = s"$name $version"
   def version : String = s"$major.$minor"
 
-  def isWindows : Boolean = System.getProperty("os.name").toLowerCase.contains("windows")
-
   def concatenate(args: Array[Byte]*) : Array[Byte] = {
-    val length = args map { _.length } reduce { _ + _ }
+    val length = (args map {
+      _.length
+    }).sum
     val bb = ByteBuffer.allocate(length)
 
     for(b <- args) bb.put(b)
     bb.array
   }
 
-  def right(bytes: Array[Byte], length: Int) = {
+  def right(bytes: Array[Byte], length: Int): Array[Byte] = {
     val bb = ByteBuffer.allocate(length)
     bb.put(bytes,0,length)
     bb.array()
   }
 
-  def touch(file: File) : Unit = {
-    Try {
-      if(!file.exists) new FileOutputStream(file).close
-      file.setLastModified(System.currentTimeMillis)
-    } match {
-      case Failure(e) => log.error(s"failed to touch file ${file.getAbsolutePath}",e)
-      case _ =>
-    }
-  }
-
-  def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
+  def toHex(color: Color): String = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
 
   val fontSizes = Array(8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64)
 
@@ -176,82 +141,4 @@ object Util {
     desirableFonts.find(monospaceFamilies.contains).map(new Font(_, 0, 12))
       .getOrElse(new Font(Font.MONOSPACED, 0, 12))
   }
-
-  lazy val sharedClassesInPackage: Array[Class[_]] = {
-    val reflections = new Reflections(new ConfigurationBuilder()
-      .setScanners(new SubTypesScanner(false /* don't exclude Object.class */), new ResourcesScanner())
-      .setUrls(ClasspathHelper.forClassLoader(ClasspathHelper.contextClassLoader(), ClasspathHelper.staticClassLoader()))
-      .filterInputsBy(new FilterBuilder().include(FilterBuilder.prefix(ScriptLoader.FRAMEWORK_CLASSPATH))))
-    reflections.getSubTypesOf(classOf[Object]).toArray.map(_.asInstanceOf[Class[_]])
-  }
-
-  /**
-    * <p>Writed shared class files as jar to file, iff the files don't equal.  Return true
-    * or false based on whether it was necessary to write the jar.</p>
-    * @param file
-    * @return
-    */
-  def writeSharedJar(file: File) : Boolean = {
-    val classBytes: Map[String, Array[Byte]] = Util.sharedClassesInPackage.map{ cl =>
-      val name = cl.getName.replace(".", "/") + ".class"
-      val is = cl.getResourceAsStream(cl.getSimpleName + ".class")
-      name -> IOUtils.toByteArray(is)
-    }.toMap
-
-
-    val existingClassBytes = getExistingClassBytes(file)
-
-    val different = classBytes.keys != existingClassBytes.keys || classBytes.keys.exists { ck =>
-      !existingClassBytes(ck).sameElements(classBytes(ck))
-    }
-
-    if (different) {
-      TryWith(new FileOutputStream(file)) { fos =>
-        val manifest = new java.util.jar.Manifest
-        manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
-        TryWith(new java.util.jar.JarOutputStream(fos, manifest)) { jos =>
-          classBytes.foreach { e =>
-            val cl = e._1
-            val bytes = e._2
-            val entry = new JarEntry(cl)
-            jos.putNextEntry(entry)
-            entry.setTime(System.currentTimeMillis())
-            jos.write(bytes)
-            jos.closeEntry()
-          }
-        }
-      }
-      true
-    } else false
-  }
-
-  def getExistingClassBytes(file: File): Map[String, Array[Byte]] = {
-    val mapb = Map.newBuilder[String, Array[Byte]]
-
-    if (file.exists()) {
-      TryWith(new JarInputStream(new FileInputStream(file))) { jis =>
-        var entry = jis.getNextJarEntry
-        while (entry != null) {
-          if (entry.getName.endsWith(".class")) {
-            mapb += entry.getName -> IOUtils.toByteArray(jis)
-          }
-          entry = jis.getNextJarEntry
-        }
-      }
-    }
-
-    mapb.result()
-  }
-
-  val sharedJarFile = new File(ConfigManager.configDir, "framework.jar")
 }
-
-case class TelnetColor(color: Int, bright: Boolean) {
-  def quote: String = Pattern.quote(toString)
-  override def toString: String = {
-    val bc = if(bright) 1 else 0
-    s"${Util.colorEscapeCode}[$bc;${color}m"
-  }
-}
-
-import scala.util.Random

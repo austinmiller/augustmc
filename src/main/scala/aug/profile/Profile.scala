@@ -70,14 +70,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   with HasHighlight {
 
   import Profile.log
-  import Util.Implicits._
 
   val profilePanel = new ProfilePanel(mainWindow, this)
   val name: String = profileConfig.name
   val slog = new PrefixSystemLog(s"[$name]: ", mainWindow.slog)
   mainWindow.tabbedPane.addProfile(name, profilePanel)
 
-  private val thread = new Thread(threadLoop(), "ProfileThread: " + name)
+  private val thread = new Thread(() => threadLoop(), "ProfileThread: " + name)
   private val windows = scala.collection.mutable.Map[String, SplittableTextArea]()
   private val threadQueue = new PriorityBlockingQueue[ProfileEvent]()
   private val running = new AtomicBoolean(true)

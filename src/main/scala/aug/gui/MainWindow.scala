@@ -17,7 +17,6 @@ import scala.util.{Failure, Try}
 
 class MainWindow extends JFrame {
   import MainWindow.log
-  import Util.Implicits._
 
   val systemPanel = new SystemPanel(this)
   val tabbedPane = new TabbedPane(this)
@@ -56,16 +55,16 @@ class MainWindow extends JFrame {
     OsTools.macHandleQuit(Main.exit())
   } else {
     profileMenu.add(preferences)
-    preferences.addActionListener(displaySettings())
+    preferences.addActionListener((e: ActionEvent) => displaySettings())
     preferences.setAccelerator(KeyStroke.getKeyStroke(s"$acclr S"))
   }
 
   openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr O"))
   closeProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr W"))
 
-  openProfileMenuItem.addActionListener(openProfile())
+  openProfileMenuItem.addActionListener((e: ActionEvent) => openProfile())
   addProfileAction(closeProfileMenuItem, (profile: Profile) => ConfigManager.deactivateProfile(profile.name))
-  openConfigDirMenuItem.addActionListener(openConfigDir())
+  openConfigDirMenuItem.addActionListener((e: ActionEvent) => openConfigDir())
 
   // connections menu
 
@@ -118,13 +117,13 @@ class MainWindow extends JFrame {
     val selectTabMenuItem = new JMenuItem(s"select tab $i")
     selectTabMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr $i"))
     selectTabMenu.add(selectTabMenuItem)
-    selectTabMenuItem.addActionListener(selectTab(i))
+    selectTabMenuItem.addActionListener((e: ActionEvent) => selectTab(i))
   }
 
   copyTextMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr C"))
   unsplitAllTextMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr U"))
 
-  copyTextMenuItem.addActionListener(tabbedPane.getSelectedComponent.asInstanceOf[HasHighlight].copyText())
+  copyTextMenuItem.addActionListener((e: ActionEvent) => tabbedPane.getSelectedComponent.asInstanceOf[HasHighlight].copyText())
   addProfileAction(unsplitAllTextMenuItem, (profile: Profile) => profile.unsplitAll())
 
   windowMenu.add(selectTabMenu)
@@ -214,10 +213,6 @@ object Main extends App {
   UIManager.put("Button.darcula.disabledText.shadow", TransparentColor)
 
   val mainWindow = new MainWindow
-
-  if (Util.writeSharedJar(Util.sharedJarFile)) {
-    mainWindow.slog.info(s"wrote shared.jar to ${Util.sharedJarFile}")
-  }
 
   def exit(): Unit = {
     ConfigManager.closeAllProfiles()
