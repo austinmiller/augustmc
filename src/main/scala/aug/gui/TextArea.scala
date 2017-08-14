@@ -155,18 +155,22 @@ class TextArea(hasHighlight: HasHighlight, val text: Text) extends JPanel {
     }
   }
 
-  val mouse = new MouseListener {
+  private val mouse = new MouseListener {
     override def mouseExited(e: MouseEvent): Unit = {}
 
     override def mouseClicked(e: MouseEvent): Unit = {
-      anchor = None
-      highlightTo = None
+      if (!hasHighlight.shift) {
+        anchor = None
+        highlightTo = None
+      }
     }
 
     override def mouseEntered(e: MouseEvent): Unit = {}
 
     override def mousePressed(e: MouseEvent): Unit = {
-      anchor = Some(textPos(e.getX, e.getY))
+      if (!hasHighlight.shift || anchor.isEmpty) {
+        anchor = Some(textPos(e.getX, e.getY))
+      }
       highlightTo = Some(textPos(e.getX, e.getY))
     }
 
@@ -177,7 +181,7 @@ class TextArea(hasHighlight: HasHighlight, val text: Text) extends JPanel {
     }
   }
 
-  val motionListener = new MouseMotionListener {
+  private val motionListener = new MouseMotionListener {
     override def mouseMoved(e: MouseEvent): Unit = {}
 
     override def mouseDragged(e: MouseEvent): Unit = {
@@ -339,10 +343,29 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
 }
 
 trait HasHighlight {
+  var shift: Boolean = false // not entirely happy with this global strategy, but it works
   var highlight: Option[String] = None
   def copyText(): Unit = {
     highlight.foreach{str=>
       Toolkit.getDefaultToolkit.getSystemClipboard.setContents(new StringSelection(str), null)
+    }
+  }
+
+  val shiftListener = new KeyListener {
+    override def keyPressed(e: KeyEvent): Unit = {
+      e.getKeyCode match {
+        case KeyEvent.VK_SHIFT => shift = true
+        case _ =>
+      }
+    }
+
+    override def keyTyped(e: KeyEvent): Unit = {}
+
+    override def keyReleased(e: KeyEvent): Unit = {
+      e.getKeyCode match {
+        case KeyEvent.VK_SHIFT => shift = false
+        case _ =>
+      }
     }
   }
 }

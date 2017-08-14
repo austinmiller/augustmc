@@ -31,6 +31,7 @@ class CommandLine(profile: Profile) extends JTextArea with KeyListener {
   setBorder(BorderFactory.createLineBorder(SidePanelColor, 3))
 
   addKeyListener(this)
+  addKeyListener(profile.shiftListener)
 
   // we don't want this component stealing copy from the menu item
   getActionMap.put("copy-to-clipboard", new AbstractAction() {
