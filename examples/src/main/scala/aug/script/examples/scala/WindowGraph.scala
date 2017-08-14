@@ -27,15 +27,15 @@ class WindowGraph extends AbstractClient {
 
     metric.setSplittable(false)
     metric.setHighlightable(false)
-    com.setTextFont(new Font("Courier", 0, 36))
+    com.setTextFont("Courier", 36)
     com.setTopColorScheme("bright")
 
     profile.setWindowGraph(graph)
 
     com.echo("hello")
     com.echo("hello2")
-    com.setLine(10, "line ten")
-    com.setLine(8, "line ten")
+    com.setLine(new LineWithNum(10, "line ten"))
+    com.setLine(new LineWithNum(8, "line ten"))
     metric.echo("100 xpm")
 
     val le = com.getLine(10)

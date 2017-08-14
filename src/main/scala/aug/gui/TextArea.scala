@@ -11,6 +11,7 @@ import javax.swing.{JPanel, JSplitPane}
 import aug.io._
 import aug.profile.{ConfigManager, ProfileConfig}
 import aug.script.framework.{LineEvent, LineWithNum, TextWindowInterface}
+import aug.util.Util
 
 import scala.annotation.tailrec
 
@@ -305,11 +306,10 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
     if (!splittable) unsplit()
   }
 
-  override def setLine(lineNum: Long, line: String): Unit = {
-    if (!console) {
-      text.setLine(lineNum, line)
-      repaint()
-    }
+  override def setLine(lineWithNum: LineWithNum): Unit = {
+    if (console) throw new RuntimeException("cannot edit console")
+    text.setLine(lineWithNum.lineNum, lineWithNum.line)
+    repaint()
   }
 
   override def setHighlightable(highlightable: Boolean): Unit = {
@@ -328,7 +328,22 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
     }
   }
 
-  override def setTextFont(font: Font): Unit = if (!console) setActiveFont(font)
+  override def setTextFont(fontName: String, size: Int): Unit = {
+    if (console) throw new RuntimeException("use preferences to set console font.")
+
+    if (!Util.fontSizes.contains(size))
+      throw new RuntimeException(s"Font size $size is not in list ${Util.fontSizes}.")
+
+    if (!Util.monospaceFamilies.contains(fontName))
+      throw new RuntimeException(s"Font $fontName is not in list ${Util.monospaceFamilies}.")
+
+    setActiveFont(new Font(fontName, 0, size))
+  }
+
+
+  override def getFontSizes: Array[Int] = Util.fontSizes
+
+  override def getFonts: Array[String] = Util.monospaceFamilies.toArray
 
   override def setTopColorScheme(colorSchemeName: String): Unit = {
     getColorScheme(colorSchemeName).foreach {cs =>

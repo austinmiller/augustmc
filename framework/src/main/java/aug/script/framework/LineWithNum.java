@@ -7,6 +7,7 @@ public class LineWithNum {
     public final String line;
 
     public LineWithNum(long lineNum, String line) {
+        if (line == null) throw new RuntimeException("line cannot be null");
         this.lineNum = lineNum;
         this.line = line;
     }

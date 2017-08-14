@@ -24,13 +24,26 @@ public interface TextWindowInterface {
 
     /**
      * <p>Set font for the window (if not console).</p>
+     *
+     * <p>Throw exception if fontName doesn't exist in {@link #getFonts()} or
+     * size doesn't exist in {@link #getFontSizes()}.</p>
      */
-    void setTextFont(Font font);
+    void setTextFont(String fontName, int size);
+
+     /**
+     * <p>Return an array of acceptable font sizes.</p>
+     */
+    int[] getFontSizes();
+
+    /**
+     * <p>Return an array of acceptable font names.</p>
+     */
+    String[] getFonts();
 
     /**
      * <p>Set line by lineNum.</p>
      */
-    void setLine(long lineNum, String line);
+    void setLine(LineWithNum lineWithNum);
 
     /**
      * <p>Get line by number.  Will include commands.</p>
