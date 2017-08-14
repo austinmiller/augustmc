@@ -1,7 +1,7 @@
 package aug.script.framework.tools
 
 import java.io.{PrintWriter, StringWriter}
-import java.lang.management.ThreadInfo
+import java.util.regex.Pattern
 
 import aug.script.framework.reload.ReloadException
 
@@ -9,6 +9,8 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 object ScalaUtils {
+
+  def matchColor(codes: Int*): String = Pattern.quote("" + 27.toByte.toChar + "[" + codes.mkString(";") + "m")
 
   def toString(throwable: Throwable): String = {
     val sw = new StringWriter
