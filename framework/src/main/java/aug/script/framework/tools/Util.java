@@ -1,11 +1,8 @@
 package aug.script.framework.tools;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 public class Util {
@@ -34,10 +31,7 @@ public class Util {
      * <p>Convert an exception's stack trace to a string.</p>
      */
     public static String stackTraceToString(Throwable throwable) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw, true);
-        throwable.printStackTrace(pw);
-        return sw.getBuffer().toString();
+        return ScalaUtils.toString(throwable);
     }
 }
 

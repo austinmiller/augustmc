@@ -58,8 +58,18 @@ class WindowGraph extends AbstractClient {
         console.split()
         true
 
+      case "timeout" =>
+        // intentionally force client thread timeout, for testing reasons
+        Thread.sleep(2000)
+        true
+
       case none => false
     }
+  }
+
+  override def shutdown(): ReloadData = {
+    metric.echo("shutdown script") // to show that shutdown is called despite timeout, and in the right order.
+    super.shutdown()
   }
 
 }

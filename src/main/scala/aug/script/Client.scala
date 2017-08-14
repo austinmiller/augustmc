@@ -1,6 +1,7 @@
 package aug.script
 
 import java.io.File
+import java.lang.management.{ManagementFactory, ThreadMXBean}
 import java.net.{URL, URLClassLoader}
 import java.util.concurrent.{Callable, Executors, TimeUnit}
 
@@ -15,6 +16,7 @@ import scala.util.{Failure, Success, Try}
 object ScriptLoader {
   val log = Logger(LoggerFactory.getLogger(ScriptLoader.getClass))
   val FRAMEWORK_CLASSPATH: String = classOf[ClientInterface].getPackage.getName
+  lazy val threadMXBean: ThreadMXBean = ManagementFactory.getThreadMXBean
 
   private val clientInterfaceT = classOf[ClientInterface]
 
@@ -37,6 +39,7 @@ object ScriptLoader {
 }
 
 object MainClassNotClientInterface extends RuntimeException("main class doesn't extend client class")
+case class ClientTimeoutException(tinfo: String) extends RuntimeException("client timed out")
 
 private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.currentThread().getContextClassLoader) {
 
@@ -105,8 +108,15 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   with ClientInterface {
   import ScriptLoader.log
 
+  private var threadId: Option[Long] = None
   private val executorService = Executors.newFixedThreadPool(1)
   private var scheduler: Option[Scheduler] = None
+
+  executorService.submit(new Runnable {
+    override def run(): Unit = {
+      threadId = Some(Thread.currentThread().getId)
+    }
+  })
 
   def getScheduler(state: List[String], reloaders: Seq[RunnableReloader[_ <: Runnable]]): Scheduler = {
     scheduler.getOrElse {
@@ -127,11 +137,20 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
     scheduler.foreach(_.close())
   }
 
+  private def threadInfo: String = {
+    threadId.flatMap(id => Option(ScriptLoader.threadMXBean.getThreadInfo(id, 20)))
+      .map(_.toString)
+      .getOrElse("unable to acquire thread dump")
+  }
+
   override def shutdown(): ReloadData = {
 
     val m: ReloadData = try {
       execute(client.shutdown())
     } catch {
+      case e: TimeoutException =>
+        profile.slog.error(s"client timed out while shutting down (very bad!)\n$threadInfo")
+        new ReloadData
       case e: Throwable =>
         profile.handleClientException(e)
         new ReloadData
@@ -151,8 +170,10 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
     } match {
       case Success(rv) => rv
       case Failure(e: TimeoutException) =>
+        val to = ClientTimeoutException(threadInfo)
         if (cancelOnTimeout) future.cancel(true)
-        throw e
+        throw to
+
       case Failure(e) =>
         profile.handleClientException(e)
         throw e

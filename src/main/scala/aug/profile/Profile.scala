@@ -4,15 +4,15 @@ import java.awt.Component
 import java.io.File
 import java.lang.Boolean
 import java.util
+import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
-import java.util.concurrent.{PriorityBlockingQueue, TimeoutException}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
 import aug.gui.{HasHighlight, MainWindow, ProfilePanel, SplittableTextArea}
 import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
 import aug.script.framework._
 import aug.script.framework.tools.ScalaUtils
-import aug.script.{Client, ClientCaller, ScriptLoader}
+import aug.script.{Client, ClientCaller, ClientTimeoutException, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -264,7 +264,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             log.error(s"unhandled event $unhandledEvent")
         }
       } catch {
-        case to: TimeoutException => clientTimedOut()
+        case to: ClientTimeoutException => clientTimedOut(to)
         case e: Throwable =>
           log.error("event handling failure", e)
           slog.error(s"event handling failure: ${e.getMessage}")
@@ -365,9 +365,9 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     *
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
     */
-  private def clientTimedOut() : Unit = {
-    log.error(s"script ran out of time to respond")
-    slog.error(s"script ran out of time to respond")
+  private def clientTimedOut(clientTimeoutException: ClientTimeoutException) : Unit = {
+    log.error(s"script ran out of time to respond\n${clientTimeoutException.tinfo}")
+    slog.error(s"script ran out of time to respond\n${clientTimeoutException.tinfo}")
     offer(ClientStop())
 
     if (profileConfig.javaConfig.clientMode == "autostart") {
@@ -385,51 +385,51 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     textLogger.foreach(_.addText(txt))
     colorlessTextLogger.foreach(_.addText(txt))
 
+    var to : Option[ClientTimeoutException] = None
+
     @tailrec
-    def handleText(texts: List[String], clientTimedOut: Boolean = false): Boolean = {
+    def handleText(texts: List[String]): Unit = {
       texts match {
 
         case List(last) =>
           fragment += last
           console.text.setLine(lineNum, fragment)
 
-          if (!clientTimedOut && client.isDefined) {
+          if (to.isEmpty && client.isDefined) {
             Try {
               client.get.handleFragment(new LineEvent(lineNum, fragment))
             } match {
-              case Failure(e: TimeoutException) => true
-              case _ => clientTimedOut
+              case Failure(e: ClientTimeoutException) => to = Some(e)
+              case _ =>
             }
-          } else clientTimedOut
+          }
 
         case text :: tail =>
           val line = fragment + text
 
-          val didWeTimeout: Boolean = if (!clientTimedOut && client.isDefined) {
+          if (to.isEmpty && client.isDefined) {
             Try {
               if(!client.get.handleLine(new LineEvent(lineNum, line))) {
                 addLine(line)
               }
             } match {
-              case Failure(e: TimeoutException) =>
+              case Failure(e: ClientTimeoutException) =>
                 addLine(line)
-                true
-              case _ => false
+                to = Some(e)
+              case _ =>
             }
           } else {
             addLine(line)
-            clientTimedOut
           }
 
-          handleText(tail, didWeTimeout)
+          handleText(tail)
 
-        case Nil => clientTimedOut
+        case Nil =>
       }
     }
 
-    if (handleText(txt.split("\n", -1).toList)) {
-      clientTimedOut()
-    }
+    handleText(txt.split("\n", -1).toList)
+    to.foreach(clientTimedOut)
   }
 
   /**
