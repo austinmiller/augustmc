@@ -57,7 +57,7 @@ case class JavaConfig(
                        clientMode: String = "disabled",
                        mainClass: String = "",
                        classPath: Array[String] = Array.empty,
-                       clientTimeout: Int = 500
+                       clientTimeout: Int = 3000
                      ) {
   private def this() = this("disabled")
 }
