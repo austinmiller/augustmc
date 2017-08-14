@@ -1,6 +1,6 @@
 package aug.gui
 
-import java.awt.event.{ActionEvent, ActionListener}
+import java.awt.event.ActionEvent
 import java.awt.{Dialog, Dimension, FlowLayout}
 import javax.swing._
 
@@ -38,15 +38,11 @@ class OpenProfileDialog(mainWindow: MainWindow) extends
 
   pack()
 
-  cancelButton.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = setVisible(false)
-  })
+  cancelButton.addActionListener((e: ActionEvent) => setVisible(false))
 
-  openButton.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = {
-      ConfigManager.activateProfile(comboBox.getSelectedItem.toString, mainWindow)
-      setVisible(false)
-    }
+  openButton.addActionListener((e: ActionEvent) => {
+    ConfigManager.activateProfile(comboBox.getSelectedItem.toString, mainWindow)
+    setVisible(false)
   })
 
   setVisible(true)

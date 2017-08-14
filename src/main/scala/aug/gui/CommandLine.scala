@@ -1,10 +1,9 @@
 package aug.gui
 
-import java.awt.{Font, Toolkit}
+import java.awt.Font
 import java.awt.event.{ActionEvent, KeyEvent, KeyListener}
 import javax.swing._
 import javax.swing.event.CaretEvent
-import javax.swing.text.DefaultEditorKit
 
 import aug.io.SidePanelColor
 import aug.profile.{Profile, UserCommand}

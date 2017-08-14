@@ -102,25 +102,25 @@ object DefaultColorScheme extends ColorScheme {
 
 class ConfigurableColorScheme(colorSchemeConfig: ColorSchemeConfig) extends ColorScheme {
 
-  val defaultFg = Color.decode(colorSchemeConfig.defaultFg)
-  val defaultBg = Color.decode(colorSchemeConfig.defaultBg)
-  val black = Color.decode(colorSchemeConfig.black)
-  val red = Color.decode(colorSchemeConfig.red)
-  val green = Color.decode(colorSchemeConfig.green)
-  val yellow = Color.decode(colorSchemeConfig.yellow)
-  val blue = Color.decode(colorSchemeConfig.blue)
-  val magenta = Color.decode(colorSchemeConfig.magenta)
-  val cyan = Color.decode(colorSchemeConfig.cyan)
-  val white = Color.decode(colorSchemeConfig.white)
+  val defaultFg: Color = Color.decode(colorSchemeConfig.defaultFg)
+  val defaultBg: Color = Color.decode(colorSchemeConfig.defaultBg)
+  val black: Color = Color.decode(colorSchemeConfig.black)
+  val red: Color = Color.decode(colorSchemeConfig.red)
+  val green: Color = Color.decode(colorSchemeConfig.green)
+  val yellow: Color = Color.decode(colorSchemeConfig.yellow)
+  val blue: Color = Color.decode(colorSchemeConfig.blue)
+  val magenta: Color = Color.decode(colorSchemeConfig.magenta)
+  val cyan: Color = Color.decode(colorSchemeConfig.cyan)
+  val white: Color = Color.decode(colorSchemeConfig.white)
 
-  val boldBlack = Color.decode(colorSchemeConfig.boldBlack)
-  val boldRed = Color.decode(colorSchemeConfig.boldRed)
-  val boldGreen = Color.decode(colorSchemeConfig.boldGreen)
-  val boldYellow = Color.decode(colorSchemeConfig.boldYellow)
-  val boldBlue = Color.decode(colorSchemeConfig.boldBlue)
-  val boldMagenta = Color.decode(colorSchemeConfig.boldMagenta)
-  val boldCyan = Color.decode(colorSchemeConfig.boldCyan)
-  val boldWhite = Color.decode(colorSchemeConfig.boldWhite)
+  val boldBlack: Color = Color.decode(colorSchemeConfig.boldBlack)
+  val boldRed: Color = Color.decode(colorSchemeConfig.boldRed)
+  val boldGreen: Color = Color.decode(colorSchemeConfig.boldGreen)
+  val boldYellow: Color = Color.decode(colorSchemeConfig.boldYellow)
+  val boldBlue: Color = Color.decode(colorSchemeConfig.boldBlue)
+  val boldMagenta: Color = Color.decode(colorSchemeConfig.boldMagenta)
+  val boldCyan: Color = Color.decode(colorSchemeConfig.boldCyan)
+  val boldWhite: Color = Color.decode(colorSchemeConfig.boldWhite)
 
   override def boldColor(telnetColor: TelnetColor): Color = {
     telnetColor match {

@@ -3,7 +3,7 @@ package aug.gui.settings
 import java.awt._
 import java.awt.event._
 import javax.swing._
-import javax.swing.event.{TreeSelectionEvent, TreeSelectionListener}
+import javax.swing.event.TreeSelectionEvent
 import javax.swing.tree.{DefaultMutableTreeNode, DefaultTreeModel, TreePath}
 
 import aug.gui.MainWindow
@@ -26,11 +26,11 @@ class SettingsTree private (settingsWindow: SettingsWindow, panel: JPanel) exten
 
   private var lastSelected = Array.empty[Object]
 
-  val model = getModel.asInstanceOf[DefaultTreeModel]
+  private val model = getModel.asInstanceOf[DefaultTreeModel]
 
-  val root = new DefaultMutableTreeNode("root")
-  val mainConfigNode = new SettingsNode("color schemes", settingsWindow.globalConfigPanel, panel)
-  val profilesNode = new SettingsNode("profiles", settingsWindow.profilesConfigPanel, panel)
+  private val root = new DefaultMutableTreeNode("root")
+  private val mainConfigNode = new SettingsNode("color schemes", settingsWindow.globalConfigPanel, panel)
+  private val profilesNode = new SettingsNode("profiles", settingsWindow.profilesConfigPanel, panel)
 
   root.add(mainConfigNode)
   root.add(profilesNode)
@@ -47,7 +47,7 @@ class SettingsTree private (settingsWindow: SettingsWindow, panel: JPanel) exten
 
   setSelectionRow(0)
 
-  def reload = {
+  private[settings] def reload(): Unit = {
     model.reload()
     for(i <- 1 to getRowCount) expandRow(i)
     Try {
@@ -58,25 +58,23 @@ class SettingsTree private (settingsWindow: SettingsWindow, panel: JPanel) exten
     }
   }
 
-  def addProfile(profileConfigPanel: ProfileConfigPanel) = {
+  private[settings] def addProfile(profileConfigPanel: ProfileConfigPanel): Unit = {
     profilesNode.add(new SettingsNode(profileConfigPanel.name, profileConfigPanel, panel))
   }
 
-  addTreeSelectionListener(new TreeSelectionListener {
-    override def valueChanged(e: TreeSelectionEvent): Unit = {
-      val tp = e.getNewLeadSelectionPath
-      if (tp != null) {
-        lastSelected = tp.getPath
-        lastSelected.last.asInstanceOf[SettingsNode].onSelection
-      }
+  addTreeSelectionListener((e: TreeSelectionEvent) => {
+    val tp = e.getNewLeadSelectionPath
+    if (tp != null) {
+      lastSelected = tp.getPath
+      lastSelected.last.asInstanceOf[SettingsNode].onSelection()
     }
   })
 
-  def setProfiles(profileConfigPanels: Seq[ProfileConfigPanel]): Unit = {
+  private[settings] def setProfiles(profileConfigPanels: Seq[ProfileConfigPanel]): Unit = {
     profilesNode.removeAllChildren()
     profileConfigPanels.foreach(addProfile)
     setSelectionRow(0)
-    reload
+    reload()
   }
 }
 
@@ -88,7 +86,7 @@ object SettingsTree {
     override def getIconWidth: Int = 0
   }
 
-  def apply(settingsWindow: SettingsWindow, panel: JPanel) = {
+  def apply(settingsWindow: SettingsWindow, panel: JPanel): SettingsTree = {
     UIManager.put("Tree.closedIcon", empty)
     UIManager.put("Tree.openIcon", empty)
     UIManager.put("Tree.leafIcon", empty)
@@ -120,28 +118,20 @@ class OkPanel(settingsWindow: SettingsWindow) extends JPanel {
   add(buttonPanel, BorderLayout.EAST)
 
 
-  cancelButton.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = {
-      settingsWindow.reloadFromConfig
-      settingsWindow.setVisible(false)
-    }
+  cancelButton.addActionListener((e: ActionEvent) => {
+    settingsWindow.reloadFromConfig()
+    settingsWindow.setVisible(false)
   })
 
-  okButton.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = {
-      if (applyButton.isEnabled) {
-        settingsWindow.saveSettings
-      }
-
-      settingsWindow.setVisible(false)
+  okButton.addActionListener((e: ActionEvent) => {
+    if (applyButton.isEnabled) {
+      settingsWindow.saveSettings()
     }
+
+    settingsWindow.setVisible(false)
   })
 
-  applyButton.addActionListener(new ActionListener {
-    override def actionPerformed(e: ActionEvent): Unit = {
-      settingsWindow.saveSettings
-    }
-  })
+  applyButton.addActionListener((e: ActionEvent) => settingsWindow.saveSettings())
 }
 
 class GlobalConfigPanel(settingsWindow: SettingsWindow) extends JPanel {
@@ -153,24 +143,24 @@ class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
 
   import mainWindow.slog
 
-  val colorSchemes = mutable.Map[String, ColorSchemeConfig]()
-  val profiles = mutable.Map[String, ProfileConfigPanel]()
+  private[settings] val colorSchemes: mutable.Map[String, ColorSchemeConfig] = mutable.Map[String, ColorSchemeConfig]()
+  private[settings] val profiles: mutable.Map[String, ProfileConfigPanel] = mutable.Map[String, ProfileConfigPanel]()
 
-  var dirtyProfiles = mutable.Set[String]()
-  var dirtyMainConfig = false
+  private var dirtyProfiles: mutable.Set[String] = mutable.Set[String]()
+  private var dirtyMainConfig = false
 
-  val okPanel = new OkPanel(this)
+  private val okPanel = new OkPanel(this)
 
-  val globalConfigPanel = new GlobalConfigPanel(this)
-  val profilesConfigPanel = new ProfilesConfigPanel(this)
+  private[settings] val globalConfigPanel = new GlobalConfigPanel(this)
+  private[settings] val profilesConfigPanel = new ProfilesConfigPanel(this)
   val rightPanel = new JPanel
   rightPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0))
   rightPanel.setLayout(new GridLayout(1,1))
   val tree = SettingsTree(this, rightPanel)
 
-  reloadFromConfig
+  reloadFromConfig()
 
-  val splitPane = new JSplitPane
+  private val splitPane = new JSplitPane
   splitPane.setOrientation(JSplitPane.HORIZONTAL_SPLIT)
   splitPane.setDividerSize(0)
   splitPane.setDividerLocation(120)
@@ -178,7 +168,7 @@ class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
   splitPane.setRightComponent(rightPanel)
   splitPane.setBorder(BorderFactory.createEmptyBorder())
 
-  val vertSplitPane = new JSplitPane
+  private val vertSplitPane = new JSplitPane
   vertSplitPane.setOrientation(JSplitPane.VERTICAL_SPLIT)
   vertSplitPane.setDividerSize(0)
   vertSplitPane.setDividerLocation(335)
@@ -195,14 +185,14 @@ class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
   setSize(647, 400)
   setLocationRelativeTo(mainWindow)
 
-  def addProfile(name: String) = {
+  private[settings] def addProfile(name: String): Unit = {
     profiles(name) = new ProfileConfigPanel(this, ProfileConfig(name))
     tree.addProfile(profiles(name))
-    tree.reload
+    tree.reload()
     setProfileDirty(name)
   }
 
-  def reloadFromConfig = {
+  private[settings] def reloadFromConfig(): Unit = {
     colorSchemes.clear
     profiles.clear
 
@@ -219,17 +209,17 @@ class SettingsWindow(val mainWindow: MainWindow) extends JDialog {
     dirtyProfiles.clear
   }
 
-  def setProfileDirty(name: String) = {
+  private[settings] def setProfileDirty(name: String): Unit = {
     dirtyProfiles.add(name)
     okPanel.applyButton.setEnabled(true)
   }
 
-  def setMainConfigDirty = {
+  private[settings] def setMainConfigDirty(): Unit = {
     dirtyMainConfig = true
     okPanel.applyButton.setEnabled(true)
   }
 
-  def saveSettings : Unit = {
+  private[settings] def saveSettings(): Unit = {
     if (dirtyMainConfig) {
       val mainConfig = {
         val defaultNames = DefaultColorSchemes.colorSchemes.map(_.name).toSet

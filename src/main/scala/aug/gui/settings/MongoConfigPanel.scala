@@ -16,7 +16,7 @@ class MongoConfigPanel(profileConfigPanel: ProfileConfigPanel) extends GridPanel
 
   c.fill = GridBagConstraints.HORIZONTAL
   margins(bot = 20)
-  addToGrid(enabledBox, 0, 0, 1, 1, 2, 1)
+  addToGrid(enabledBox, 0, 0, 1, 1, 2)
 
   margins()
   addToGrid(new JLabel("user"), 0, 1)
@@ -33,7 +33,7 @@ class MongoConfigPanel(profileConfigPanel: ProfileConfigPanel) extends GridPanel
   margins()
   addToGrid(hostField, 3, 2, fieldWeight)
 
-  addToGrid(new JPanel(), 0, 3, 100, 100, 4, 1)
+  addToGrid(new JPanel(), 0, 3, 100, 100, 4)
 
   setMargin(10)
 }
