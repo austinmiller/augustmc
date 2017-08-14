@@ -15,6 +15,7 @@ import aug.script.framework.tools.ScalaUtils
 import aug.script.{Client, ClientCaller, ClientTimeoutException, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
+import org.mongodb.scala.{MongoClient, MongoDatabase}
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
@@ -53,6 +54,7 @@ case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue +
 case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class ProfileLog(on: Boolean, color: Boolean) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class MongoStart() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
+case class MongoInit(client: MongoClient, db: MongoDatabase) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class MongoStop() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 
 case class ClientEvent(event: ClientCaller) extends AbstractProfileEvent(Int.MinValue + 2, EventId.nextId)
@@ -86,6 +88,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var telnet : Option[Telnet] = None
   private var client : Option[Client] = None
   private var mongo : Option[Mongo] = None
+  private var db : Option[(MongoClient, MongoDatabase)] = None
   private var textLogger : Option[TextLogger] = None
   private var colorlessTextLogger : Option[ColorlessTextLogger] = None
   private var lineNum: Long = 0
@@ -216,6 +219,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 this.client = Some(script)
                 Try {
                   script.init(new ProfileProxy(this), clientReloadData)
+                  db.foreach(d=> script.initDB(d._1, d._2))
                 } match {
                   case Failure(e) =>
                     slog.error(s"failed to init client, won't autostart, ${e.getMessage}")
@@ -255,10 +259,18 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
           case MongoStart() =>
             mongo = Some(new Mongo(this, profileConfig))
+            db = None
 
           case MongoStop() =>
             closeQuietly(mongo.foreach(_.close()))
+            db = None
             mongo = None
+
+          case MongoInit(mongoClient: MongoClient, db: MongoDatabase) =>
+            if (mongo.isDefined) {
+              this.db = Some((mongoClient, db))
+              client.foreach(_.initDB(mongoClient, db))
+            }
 
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")

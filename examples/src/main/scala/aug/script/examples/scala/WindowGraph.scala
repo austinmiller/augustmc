@@ -1,7 +1,5 @@
 package aug.script.examples.scala
 
-import java.awt.Font
-
 import aug.script.framework._
 
 class WindowGraph extends AbstractClient {
@@ -71,5 +69,4 @@ class WindowGraph extends AbstractClient {
     metric.echo("shutdown script") // to show that shutdown is called despite timeout, and in the right order.
     super.shutdown()
   }
-
 }
