@@ -20,3 +20,19 @@ vast library.
 * first class MongoDB integration
 * perfect text processing
 * customizable telnet color
+* scroll splitter
+* a powerful framework
+
+## Docs
+
+* [Getting Started](docs/getting-started.md)
+* [Clients](docs/clients.md)
+* [Client Quick Start](docs/client-quick-start.md)
+
+## Screenshots
+
+![Client UI](docs/screenshots/client-ui.png)
+![System Log](docs/screenshots/system-log.png)
+![Color Settings](docs/screenshots/color-settings.png)
+![Mongo Settings](docs/screenshots/mongo-settings.png)
+
