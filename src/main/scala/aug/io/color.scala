@@ -3,6 +3,7 @@ package aug.io
 import java.awt.Color
 
 import aug.profile.ColorSchemeConfig
+import aug.script.framework.tools.ScalaUtils
 
 
 sealed trait TelnetColor
@@ -19,10 +20,46 @@ case object TelnetColorCyan extends TelnetColor
 case object TelnetColorWhite extends TelnetColor
 
 case class ColorCode(fg: TelnetColor, bg: TelnetColor = TelnetColorDefaultBg, bold: Boolean = false) {
-  def fgColor(colorScheme: ColorScheme) = if (bold) colorScheme.boldColor(fg) else colorScheme.color(fg)
-  def bgColor(colorScheme: ColorScheme) = colorScheme.color(bg)
+  def fgColor(colorScheme: ColorScheme): Color = if (bold) colorScheme.boldColor(fg) else colorScheme.color(fg)
+  def bgColor(colorScheme: ColorScheme): Color = colorScheme.color(bg)
+
+  def toTelnetCode: String = {
+    val fgc: String = {
+      val tmp: String = fg match {
+        case TelnetColorDefaultFg => "0"
+        case TelnetColorDefaultBg => "0"
+        case TelnetColorBlack => "30"
+        case TelnetColorRed => "31"
+        case TelnetColorGreen => "32"
+        case TelnetColorYellow => "33"
+        case TelnetColorBlue => "34"
+        case TelnetColorMagenta => "35"
+        case TelnetColorCyan => "36"
+        case TelnetColorWhite => "37"
+      }
+
+      if (bold) "1;" + tmp else tmp
+    }
+
+    val bgc: String = fg match {
+      case TelnetColorDefaultFg => ""
+      case TelnetColorDefaultBg => ""
+      case TelnetColorBlack => "40"
+      case TelnetColorRed => "41"
+      case TelnetColorGreen => "42"
+      case TelnetColorYellow => "43"
+      case TelnetColorBlue => "44"
+      case TelnetColorMagenta => "45"
+      case TelnetColorCyan => "46"
+      case TelnetColorWhite => "47"
+    }
+
+    val fc = if (fgc == "0" && bgc == "0") "0" else if (bgc != "") fgc + ";" + bgc else fgc
+    ScalaUtils.encodeColor(fc)
+  }
 }
 
+object CommandColorCode extends ColorCode(TelnetColorYellow)
 object DefaultColorCode extends ColorCode(TelnetColorDefaultFg, TelnetColorDefaultBg, false)
 object HighlightColorCode extends ColorCode(TelnetColorDefaultBg, TelnetColorDefaultFg, false)
 

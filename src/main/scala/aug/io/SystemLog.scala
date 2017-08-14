@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 import aug.gui.{SystemPanel, TabbedPane}
-import aug.util.Util
+import aug.script.framework.tools.ScalaUtils
 import org.apache.commons.lang.exception.ExceptionUtils
 
 trait SystemLogInterface {
@@ -45,9 +45,9 @@ class SystemLog(systemPanel: SystemPanel, tabbedPane: TabbedPane) extends System
     tabbedPane.addError()
   }
 
-  private def log(category: String, colorCode: String, msg: String) = {
-    val txt = Util.colorCode(colorCode) + dateFormat.format(new Date) +
-      " " + category + ": " + Util.colorCode("0") + msg
+  private def log(category: String, colorCode: String, msg: String): Unit = {
+    val txt = ScalaUtils.encodeColor(colorCode) + dateFormat.format(new Date) +
+      " " + category + ": " + ScalaUtils.encodeColor("0") + msg
     raw(txt)
   }
 }

@@ -4,12 +4,13 @@ import java.awt.datatransfer.StringSelection
 import java.awt.event._
 import java.awt.image.BufferedImage
 import java.awt.{Font, Graphics, Toolkit}
+import java.util.Optional
 import javax.swing.border.EmptyBorder
 import javax.swing.{JPanel, JSplitPane}
 
 import aug.io._
 import aug.profile.{ConfigManager, ProfileConfig}
-import aug.script.framework.TextWindowInterface
+import aug.script.framework.{LineEvent, LineWithNum, TextWindowInterface}
 
 import scala.annotation.tailrec
 
@@ -339,6 +340,18 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
     getColorScheme(colorSchemeName).foreach {cs =>
       textArea.setColorScheme(cs)
     }
+  }
+
+  override def getLine(lineNum: Long): Optional[LineEvent] = {
+    val opt: Option[LineEvent] = text.get(lineNum).map(_.colorStr).map{ raw =>
+      new LineEvent(lineNum, raw)
+    }
+    Optional.of(opt.orNull)
+  }
+
+  override def setLines(lines: Array[LineWithNum]): Unit = {
+    text.setLines(lines)
+    repaint()
   }
 }
 

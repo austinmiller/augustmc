@@ -37,6 +37,11 @@ class WindowGraph extends AbstractClient {
     com.setLine(10, "line ten")
     com.setLine(8, "line ten")
     metric.echo("100 xpm")
+
+    val le = com.getLine(10)
+    if (le.isPresent) {
+      metric.echo(s"com [10] == ${le.get}")
+    }
   }
 
   override def handleCommand(cmd: String): Boolean = {

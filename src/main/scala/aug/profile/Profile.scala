@@ -11,6 +11,7 @@ import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 import aug.gui.{HasHighlight, MainWindow, ProfilePanel, SplittableTextArea}
 import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
 import aug.script.framework._
+import aug.script.framework.tools.ScalaUtils
 import aug.script.{Client, ClientCaller, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
@@ -149,7 +150,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         val event = threadQueue.take()
         event match {
           case TelnetConnect(id, url, port) =>
-            addLine(Util.colorCode("0") + "--connected--")
+            addLine(ScalaUtils.encodeColor("0") + "--connected--")
             slog.info(s"connected $telnet")
 
             client.foreach(_.onConnect(id, url, port))
@@ -329,7 +330,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private def onDisconnect(id: Long): Unit = {
     telnet.foreach{ t=>
       if (t.id == id) {
-        addLine(Util.colorCode("0") + "--disconnected--")
+        addLine(ScalaUtils.encodeColor("0") + "--disconnected--")
         client.foreach(_.onDisconnect(id))
       }
       telnet = None

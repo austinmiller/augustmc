@@ -13,4 +13,9 @@ public class LineEvent {
         this.raw = raw;
         this.withoutColors = ScalaUtils.removeColors(raw);
     }
+
+    @Override
+    public String toString() {
+        return "[" + lineNum + ", " + withoutColors + "]";
+    }
 }

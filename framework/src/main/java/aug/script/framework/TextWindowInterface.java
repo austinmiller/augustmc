@@ -1,6 +1,7 @@
 package aug.script.framework;
 
 import java.awt.*;
+import java.util.Optional;
 
 @SuppressWarnings("unused")
 public interface TextWindowInterface {
@@ -30,6 +31,21 @@ public interface TextWindowInterface {
      * <p>Set line by lineNum.</p>
      */
     void setLine(long lineNum, String line);
+
+    /**
+     * <p>Get line by number.  Will include commands.</p>
+     */
+    Optional<LineEvent> getLine(long lineNum);
+
+    /**
+     * <p>Set many lines in one call.</p>
+     *
+     * <p>If setting many lines, this can be higher performance, as the GUI call to repaint will
+     * be guaranteed to happen only once.  Nice for also eliminating any chance of "draw tearing".</p>
+     *
+     * <p>Ignores commands field on LineWithNum</p>
+     */
+    void setLines(LineWithNum []lines);
 
     /**
      * <p>Set whether the text area can be highlighted for copying text.</p>

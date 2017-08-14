@@ -2,6 +2,7 @@ package aug.gui
 
 import aug.io._
 import aug.profile.ProfileConfig
+import aug.script.framework.LineWithNum
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
@@ -14,6 +15,8 @@ case class Fragment(text: String, colorCode: ColorCode) {
   }
 
   def highlight: Fragment = this.copy(colorCode = colorCode.copy(bg = TelnetColorBlue))
+
+  def colorText: String = colorCode.toTelnetCode + text
 }
 
 case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long, pos: Int = 0) {
@@ -36,24 +39,24 @@ case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long
         builder += this
 
         if (profileConfig.consoleWindow.stackCmds) {
-          val frag = Fragment(commands.mkString(" | "), ColorCode(TelnetColorYellow))
+          val frag = Fragment(commands.mkString(" | "), CommandColorCode)
           builder += Line(List(frag), List.empty, lineNum, length)
         } else {
           var pos = length
           commands.foreach { cmd =>
-            builder += Line(List(Fragment(cmd, ColorCode(TelnetColorYellow))), List.empty, lineNum, pos)
+            builder += Line(List(Fragment(cmd, CommandColorCode)), List.empty, lineNum, pos)
             pos += cmd.length + 3 // the " | " for stacking
           }
         }
       } else {
         if (profileConfig.consoleWindow.stackCmds) {
-          val frag = Fragment(commands.mkString(" | "), ColorCode(TelnetColorYellow))
+          val frag = Fragment(commands.mkString(" | "), CommandColorCode)
           builder += this.copy(fragments = this.fragments :+ frag)
         } else {
           val xs :: tail = commands
-          builder += this.copy(fragments = this.fragments :+ Fragment(xs, ColorCode(TelnetColorYellow)))
+          builder += this.copy(fragments = this.fragments :+ Fragment(xs, CommandColorCode))
           tail.foreach { cmd =>
-            builder += Line(List(Fragment(cmd, ColorCode(TelnetColorYellow))), List.empty, lineNum, length)
+            builder += Line(List(Fragment(cmd, CommandColorCode)), List.empty, lineNum, length)
           }
         }
       }
@@ -104,6 +107,17 @@ case class Line(fragments: List[Fragment], commands: List[String], lineNum: Long
     }
 
     lines.result
+  }
+
+  def colorStr: String = {
+    val cmds = commands match {
+      case xs :: tail =>
+        ((CommandColorCode.toTelnetCode + xs) :: tail).mkString(" | ")
+      case Nil =>
+        ""
+    }
+
+    fragments.map(_.colorText).mkString + cmds
   }
 
   def str: String = {
@@ -169,7 +183,8 @@ class Text(var profileConfig: ProfileConfig) {
 
   lines(botLine) = EmptyLine(botLine)
 
-  def apply(lineNum: Long): Line = lines.getOrElse(lineNum, EmptyLine(lineNum))
+  def get(lineNum: Long): Option[Line] = synchronized(lines.get(lineNum))
+  def apply(lineNum: Long): Line = synchronized(lines.getOrElse(lineNum, EmptyLine(lineNum)))
 
   def getWrapLines(numLines: Int, wrapAt: Int, botLine: Long): List[Line] = synchronized {
     val bl = if(botLine == -1) this.botLine else botLine
@@ -197,6 +212,10 @@ class Text(var profileConfig: ProfileConfig) {
 
   def addLine(txt: String): Unit = synchronized {
     setLine(botLine + 1, txt)
+  }
+
+  def setLines(lines: Array[LineWithNum]): Unit = synchronized {
+    lines.foreach(lwn => setLine(lwn.lineNum, lwn.line))
   }
 
   def setLine(lineNum: Long, txt: String): Unit = synchronized {

@@ -154,7 +154,6 @@ object Util {
   }
 
   def toHex(color: Color) = f"#${color.getRed}%02x${color.getGreen}%02x${color.getBlue}%02x".toUpperCase
-  def colorCode(code: String) = "" + 27.toByte.toChar + "[" + code + "m"
 
   val fontSizes = Array(8, 9, 10, 11, 12, 13, 14, 18, 24, 36, 48, 64)
 
