@@ -42,6 +42,7 @@ class MainWindow extends JFrame {
   private val openProfileMenuItem = new JMenuItem("open profile")
   private val closeProfileMenuItem = new JMenuItem("close profile")
   private val openConfigDirMenuItem = new JMenuItem("open config dir")
+  private val quitMenuItem = new JMenuItem("quit")
 
   profileMenu.add(openProfileMenuItem)
   profileMenu.add(closeProfileMenuItem)
@@ -55,8 +56,13 @@ class MainWindow extends JFrame {
     OsTools.macHandleQuit(Main.exit())
   } else {
     profileMenu.add(preferences)
+    profileMenu.add(quitMenuItem)
+
     preferences.addActionListener((e: ActionEvent) => displaySettings())
+    quitMenuItem.addActionListener((e: ActionEvent) => Main.exit())
+
     preferences.setAccelerator(KeyStroke.getKeyStroke(s"$acclr S"))
+    quitMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr Q"))
   }
 
   openProfileMenuItem.setAccelerator(KeyStroke.getKeyStroke(s"$acclr O"))
