@@ -288,17 +288,15 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
   }
 
   override def echo(line: String): Unit = {
-    if (!console) {
-      text.addLine(line)
-      repaint()
-    }
+    if (console) throw new Exception("cannot echo to console")
+    text.addLine(line)
+    repaint()
   }
 
   override def clear(): Unit = {
-    if (!console) {
-      text.clear()
-      repaint()
-    }
+    if (console) throw new Exception("cannot clear console from API")
+    text.clear()
+    repaint()
   }
 
   override def setSplittable(splittable: Boolean): Unit = {
@@ -346,15 +344,11 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
   override def getFonts: Array[String] = Util.monospaceFamilies.toArray
 
   override def setTopColorScheme(colorSchemeName: String): Unit = {
-    getColorScheme(colorSchemeName).foreach {cs =>
-      topTextArea.setColorScheme(cs)
-    }
+    getColorScheme(colorSchemeName).foreach(topTextArea.setColorScheme)
   }
 
   override def setBottomColorScheme(colorSchemeName: String): Unit = {
-    getColorScheme(colorSchemeName).foreach {cs =>
-      textArea.setColorScheme(cs)
-    }
+    getColorScheme(colorSchemeName).foreach(textArea.setColorScheme)
   }
 
   override def getLine(lineNum: Long): Optional[LineEvent] = {
