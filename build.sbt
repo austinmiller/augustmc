@@ -9,7 +9,7 @@ lazy val macroSettings = Seq(
 )
 
 lazy val commonSettings = Seq(
-  version := "2017.1",
+  version := "2017.2",
   scalaVersion := scala212,
   exportJars := true,
   libraryDependencies ++= Seq(
