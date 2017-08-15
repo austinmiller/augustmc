@@ -4,7 +4,7 @@
 
 August Mud Client is a modern mud client written in Scala that allows scripting in 
 any JVM-based language (Java, Scala, Kotlin, Clojure, etc).  The focus for the client
-is to provide a clean interface and excellently written composeable components and
+is to provide a clean interface and excellently written composable components and
 turn over the control to the user via the scripting framework.
 
 On first launch, August MC looks quite plain.  As users discover how programmable it
@@ -15,6 +15,7 @@ vast library.
 ## Features
 
 * JVM-based scripting
+* Classloader Isolation
 * GMCP
 * MCCP
 * programmable window layout
