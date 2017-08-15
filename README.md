@@ -26,12 +26,17 @@ vast library.
 * scroll splitter
 * a powerful framework
 * color triggers
+* auto-logging (also with color)
 
 ## Docs
 
 * [Getting Started](docs/getting-started.md)
 * [Clients](docs/clients.md)
 * [Client Quick Start](docs/client-quick-start.md)
+* [Reloader](docs/reloader.md)
+* [Scheduler](docs/scheduler.md)
+* [Contributing](docs/contributing.md)
+* [FAQ](docs/faq.md)
 
 ## Screenshots
 
@@ -40,3 +45,7 @@ vast library.
 ![Color Settings](docs/screenshots/color-settings.png)
 ![Mongo Settings](docs/screenshots/mongo-settings.png)
 
+## Credits
+
+* Konstantin Bulenkov for our most excellent [Darcula LookAndFeel](https://github.com/bulenkov/Darcula)
+* [Aardwolf](http://aardmud.org) for playing test server

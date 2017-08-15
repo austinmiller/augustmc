@@ -36,4 +36,6 @@ is configurable from the framework than from the preferences dialog, so even
 though AugustMC should look a little spare at this point, the framework will give
 the user complete control.
 
-Please see clients doc to get started with creating clients.
+#### FOR MORE INFO
+
+* [Clients](clients.md)

@@ -63,6 +63,8 @@ is that the framework jar version does not match AugustMC's version.
 
 ### CLIENT INTERFACE
 
+See [ClientInterface](../framework/src/main/java/aug/script/framework/ClientInterface.java)
+
 Minimally, the client needs to implement a ClientInterface with a class that
 has a parameterless constructor.  This class needs to be instatiated by
 AugustMC and represents the entry point into the Client.  See the thorough
@@ -73,6 +75,8 @@ Of specific interest is the client timeout issue.  Read the ClientInterface
 docs for a thorough explanation.
 
 ### PROFILE INTERFACE
+
+See [ProfileInterface](../framework/src/main/java/aug/script/framework/ProfileInterface.java)
 
 AugustMC will call the ClientInterface implementation the user provides after
 starting the client and give the client a ProfileInterface which contains
@@ -133,6 +137,6 @@ cp parameter when invoking the jvm.  Files are expected to be jars.
 
 ### FOR MORE INFO
 
-See the various getting started documents to get started building a client.
-
-Also see the document for framework features, which solve common problems.
+* [Client Quick Start](client-quick-start.md)
+* [Getting Started](getting-started.md)
+* [FAQ](faq.md)
