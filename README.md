@@ -25,6 +25,7 @@ vast library.
 * customizable telnet color
 * scroll splitter
 * a powerful framework
+* color triggers
 
 ## Docs
 
