@@ -1,6 +1,6 @@
 # August MC
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/augustmc/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/augustmc/Lobby](https://badges.gitter.im/augustmc/Lobby.svg)](https://gitter.im/augustmc/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 August Mud Client is a modern mud client written in Scala that allows scripting in 
 any JVM-based language (Java, Scala, Kotlin, Clojure, etc).  The focus for the client
