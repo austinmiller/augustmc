@@ -1,5 +1,5 @@
 # August MC
-[![Build Status](https://travis-ci.org/austinmiller/augustmc.svg?branch=master)](https://travis-ci.org/austinmiller/augustmc.svg?branch=master)
+[![Build Status](https://travis-ci.org/austinmiller/augustmc.svg?branch=master)](https://travis-ci.org/austinmiller/augustmc)
 [![Join the chat at https://gitter.im/augustmc/Lobby](https://badges.gitter.im/augustmc/Lobby.svg)](https://gitter.im/augustmc/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 August Mud Client is a modern mud client written in Scala that allows scripting in 
