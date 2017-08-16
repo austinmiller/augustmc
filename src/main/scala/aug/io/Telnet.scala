@@ -26,6 +26,7 @@ sealed abstract class TelnetCommand(val code: Byte, val text: String)
 case class TelnetUnknown(unknownCode: Byte) extends TelnetCommand(unknownCode,"UNKNOWN")
 case object TelnetEsc extends TelnetCommand(27.toByte,"ESC")
 case object TelnetSE extends TelnetCommand(240.toByte,"SE")
+case object TelnetGA extends TelnetCommand(249.toByte, "GA")
 case object TelnetSB extends TelnetCommand(250.toByte,"SB")
 case object TelnetWill extends TelnetCommand(251.toByte,"WILL")
 case object TelnetWont extends TelnetCommand(252.toByte,"WONT")
@@ -52,6 +53,7 @@ object Telnet {
   private val telnetCommands : Map[Byte,TelnetCommand] = Map(
     TelnetEsc.code -> TelnetEsc,
     TelnetSE.code -> TelnetSE,
+    TelnetGA.code -> TelnetGA,
     TelnetSB.code -> TelnetSB,
     TelnetWill.code -> TelnetWill,
     TelnetWont.code -> TelnetWont,
@@ -135,13 +137,27 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
         } else if('\r' != c) postBuffer.put(c)
 
       case Command =>
-        command = Telnet.telnetCommands(v)
+        command = Telnet.telnetCommands.getOrElse(v, TelnetUnknown(v))
 
-        if(TelnetSE.code == v) {
-          state = Stream
-          handleSubNegotiation()
-        } else {
-          state = Option
+        command match {
+          case TelnetSE =>
+            state = Stream
+            handleSubNegotiation()
+
+          case TelnetDo | TelnetDont | TelnetWill | TelnetWont =>
+            state = Option
+
+          case TelnetUnknown(_) =>
+            log.info(s"unknown telnet command: $v")
+            profile.slog.info(s"unknown telnet command: $v")
+
+          case TelnetGA =>
+            post(true)
+            state = Stream
+
+          case all =>
+            state = Stream
+            log.error(s"unhandled command $all")
         }
 
       case Option =>
@@ -192,7 +208,9 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   private def handleOption(): Unit = {
     command match {
-      case TelnetSB => state = SubNegotiation
+      case TelnetSB =>
+        state = SubNegotiation
+
       case TelnetWill =>
         state = Stream
         handleWillOption()
@@ -257,12 +275,12 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
     }
   }
 
-  private def post(): Unit = {
-    if (postBuffer.position == 0) return
+  private def post(withGA: Boolean = false): Unit = {
+    if (postBuffer.position == 0 && !withGA) return
 
     val msg = new String(postBuffer.array, 0, postBuffer.position)
 
-    profile.offer(TelnetRecv(msg))
+    profile.offer(TelnetRecv(msg, withGA))
     postBuffer.position(0)
   }
 
@@ -304,7 +322,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   def send(option: TelnetOption, message: String): Unit = {
     val cmd : Array[Byte] = constructCommand(TelnetSB, option)
     val stop : Array[Byte] = Array(TelnetIac.code, TelnetSE.code)
-    log.info(s"sending w$option: $message")
+    log.info(s"sending $option: $message")
 
     send(Util.concatenate(cmd, message.getBytes, stop))
   }

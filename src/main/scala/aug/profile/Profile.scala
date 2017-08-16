@@ -60,7 +60,7 @@ case class MongoStop() extends AbstractProfileEvent(Int.MinValue + 1, EventId.ne
 case class ClientEvent(event: ClientCaller) extends AbstractProfileEvent(Int.MinValue + 2, EventId.nextId)
 
 case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nextId)
-case class TelnetRecv(data: String) extends AbstractProfileEvent(0, EventId.nextId)
+case class TelnetRecv(data: String, ga: Boolean) extends AbstractProfileEvent(0, EventId.nextId)
 case class TelnetGMCP(data: String) extends AbstractProfileEvent(0, EventId.nextId)
 
 case class ProfileConnect() extends AbstractProfileEvent(0, EventId.nextId)
@@ -95,6 +95,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private var fragment: String = ""
   private var clientReloadData = new ReloadData
   private var schedulerState = List.empty[String]
+  private var lastGA: Boolean = false
 
   val console = new SplittableTextArea(profileConfig, this)
   windows("console") = console
@@ -164,7 +165,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             onDisconnect(id)
             slog.info(s"disconnected $id")
 
-          case TelnetRecv(data) => processText(data)
+          case TelnetRecv(data, ga) => processText(data, ga)
 
           case TelnetGMCP(data) =>
 
@@ -392,7 +393,13 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     *
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
     */
-  private def processText(txt: String) : Unit = {
+  private def processText(txt: String, ga: Boolean) : Unit = {
+
+    if (lastGA) {
+      addLine(fragment)
+    }
+
+    lastGA = ga
 
     textLogger.foreach(_.addText(txt))
     colorlessTextLogger.foreach(_.addText(txt))
@@ -406,6 +413,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         case List(last) =>
           fragment += last
           console.text.setLine(lineNum, fragment)
+          console.repaint()
 
           if (to.isEmpty && client.isDefined) {
             Try {
@@ -460,7 +468,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
       case None => slog.info(s"command ignored: $cmds")
     }
-
   }
 
   /**
