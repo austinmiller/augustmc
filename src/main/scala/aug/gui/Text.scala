@@ -287,6 +287,7 @@ class Text(var profileConfig: ProfileConfig) {
         case 2 => // draw feintly -- won't support yet
         case 4 => // draw underline -- won't support yet
         case 7 => // reverse fg/bg -- won't support yet
+        case 24 => // underline off -- won't support yet
 
         case 30 => fg = TelnetColorBlack
         case 31 => fg = TelnetColorRed
@@ -309,6 +310,9 @@ class Text(var profileConfig: ProfileConfig) {
         case 47 => bg = TelnetColorWhite
 
         case 49 => bg = TelnetColorDefaultBg
+
+        case unknown =>
+          log.error(s"unknown option $unknown")
       }
 
       ColorCode(fg, bg, bold)
