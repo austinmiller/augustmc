@@ -24,6 +24,7 @@ case object SubNegotiation extends TelnetState
 sealed abstract class TelnetCommand(val code: Byte, val text: String)
 
 case class TelnetUnknown(unknownCode: Byte) extends TelnetCommand(unknownCode,"UNKNOWN")
+case object TelnetEOR extends TelnetCommand(25.toByte,"EOR")
 case object TelnetEsc extends TelnetCommand(27.toByte,"ESC")
 case object TelnetSE extends TelnetCommand(240.toByte,"SE")
 case object TelnetGA extends TelnetCommand(249.toByte, "GA")
@@ -38,6 +39,7 @@ sealed abstract class TelnetOption(val code: Byte, val text: String)
 
 case object OptionEcho extends TelnetOption(1.toByte,"ECHO")
 case object OptionType extends TelnetOption(24.toByte,"TYPE")
+case object OptionEOR extends TelnetOption(25.toByte,"EOR")
 case object OptionWinSize extends TelnetOption(31.toByte,"WIN_SIZE")
 case object OptionMccp1 extends TelnetOption(85.toByte,"MCCP1")
 case object OptionMccp2 extends TelnetOption(86.toByte,"MCCP2")
@@ -51,6 +53,7 @@ object Telnet {
   private val log = Logger(LoggerFactory.getLogger(Telnet.getClass))
 
   private val telnetCommands : Map[Byte,TelnetCommand] = Map(
+    TelnetEOR.code -> TelnetEOR,
     TelnetEsc.code -> TelnetEsc,
     TelnetSE.code -> TelnetSE,
     TelnetGA.code -> TelnetGA,
@@ -118,11 +121,13 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   override def finishConnect(): Unit = {
     super.finishConnect()
+    quickConnect()
+  }
+
+  override def quickConnect(): Unit = {
     log.info(s"finished connect to $url:$port, closed ==")
     if(!isClosed) profile.offer(TelnetConnect(id, url, port))
   }
-
-  override def quickConnect(): Unit = if(!isClosed) profile.offer(TelnetConnect(id, url, port))
 
   private def handleByte(c: Byte): Unit = {
     val v : Byte = (0x00FF & c).toByte
@@ -144,7 +149,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
             state = Stream
             handleSubNegotiation()
 
-          case TelnetDo | TelnetDont | TelnetWill | TelnetWont =>
+          case TelnetDo | TelnetDont | TelnetWill | TelnetWont | TelnetSB =>
             state = Option
 
           case TelnetUnknown(_) =>
@@ -235,8 +240,15 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
         if(Telnet.TELQUAL_SEND == i) {
           send(OptionType, Telnet.TELQUAL_IS+"augustMC")
         }
-      case OptionMccp2 => startCompression()
-      case OptionGmcp => profile.offer(TelnetGMCP(sm))
+
+      case OptionMccp2 =>
+        log.trace("starting compression")
+        startCompression()
+
+      case OptionGmcp =>
+        log.trace(s"recv gmcp: $sm")
+        profile.offer(TelnetGMCP(sm))
+
       case _ =>
     }
   }

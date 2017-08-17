@@ -165,9 +165,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             onDisconnect(id)
             slog.info(s"disconnected $id")
 
-          case TelnetRecv(data, ga) => processText(data, ga)
+          case TelnetRecv(data, ga) =>
+            processText(data, ga)
 
           case TelnetGMCP(data) =>
+            client.foreach(_.handleGmcp(data))
 
           case UserCommand(data) =>
             client match {
