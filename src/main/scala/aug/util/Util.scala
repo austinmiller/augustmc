@@ -97,7 +97,7 @@ object Util {
 
   val name = "August MC"
   val major = 2017
-  val minor = 2
+  val minor = 3
 
   def fullName : String = s"$name $version"
   def version : String = s"$major.$minor"
