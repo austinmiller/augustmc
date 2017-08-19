@@ -1,23 +1,26 @@
 #!/bin/bash
 
-jar=$(ls augustmc-*.jar)
+source common
 
-if [ -z $jar ]; then
-  echo "No jar found"
-  exit 0
-fi
+uname=$(uname)
+jar=$(ls augustmc-*.jar)
+check $jar "jar"
 
 OPTS=""
-if [ $1 == "deb" ]; then
-  #OPTS="-BlicenseFile=LICENSE" 
+if [ $uname == "Darwin" ]; then
+  target="dmg"
+elif [ $uname == "Linux" ]; then
   OPTS="-Bcategory=Game" 
+  target="deb"
+else
+  err "unsupported build environment: $uname"
 fi
 
 version=${jar#"augustmc-"}
 version=${version%".jar"}
 
-echo "version: $version"
+info "version: $version"
 rm -Rf packages
-javapackager -deploy -native $1 -outdir packages -outfile augustmc \
+javapackager -deploy -native $target -outdir packages -outfile augustmc \
     -srcfiles $jar -appclass com.simontuffs.onejar.Boot \
     -name "AugustMC" -title "August MC $version" -v -BappVersion=$version $OPTS
