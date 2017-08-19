@@ -1,0 +1,36 @@
+#!/bin/bash
+
+source common
+
+function cleanjars() {
+  rm -f *jar
+  find .. -name "*.jar" | grep "/target/" | xargs rm -f  
+}
+
+function build() {
+  pwd=$(pwd)
+  cd ..
+  sbt clean
+  sbt one-jar
+  sbt framework/packageSrc
+  cd $pwd
+}
+
+cleanjars && info "cleaned local and target jars"
+build
+
+onejar=$(find .. -name "*one-jar.jar")
+check $onejar "one-jar"
+
+version=$(echo $onejar | sed -nr 's/.*augustmc_2\.[0-9]+-(.*)-one-jar\.jar/\1/p')
+check $version "version"
+
+framework=$(find .. -name "framework*$version.jar")
+check $framework "framework"
+
+frameworkSources=$(find .. -name "framework*$version-sources.jar")
+check $frameworkSources "frameworkSources"
+
+cp $onejar augustmc-$version.jar
+cp $framework framework-$version.jar
+cp $frameworkSources framework-$version-sources.jar

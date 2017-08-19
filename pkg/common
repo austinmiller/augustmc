@@ -1,0 +1,17 @@
+#!/bin/bash
+
+function err() {
+  echo "ERROR: $1"
+  exit 1
+}
+
+function info() {
+  echo "INFO: $1"
+}
+
+function check() {
+  if [ -z $1 ]; then
+    err "did not find $2"
+  fi
+  info "$2 == $1"
+}
