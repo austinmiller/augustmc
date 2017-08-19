@@ -1,0 +1,23 @@
+#!/bin/bash
+
+jar=$(ls augustmc-*.jar)
+
+if [ -z $jar ]; then
+  echo "No jar found"
+  exit 0
+fi
+
+OPTS=""
+if [ $1 == "deb" ]; then
+  #OPTS="-BlicenseFile=LICENSE" 
+  OPTS="-Bcategory=Game" 
+fi
+
+version=${jar#"augustmc-"}
+version=${version%".jar"}
+
+echo "version: $version"
+rm -Rf packages
+javapackager -deploy -native $1 -outdir packages -outfile augustmc \
+    -srcfiles $jar -appclass com.simontuffs.onejar.Boot \
+    -name "AugustMC" -title "August MC $version" -v -BappVersion=$version $OPTS
