@@ -4,5 +4,6 @@ OcelChat.scala
 .DS_Store
 *jar
 *deb
+*dmg
 *exe
 /pkg/packages
