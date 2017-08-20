@@ -3,4 +3,6 @@ target
 OcelChat.scala
 .DS_Store
 *jar
+*deb
+*exe
 /pkg/packages
