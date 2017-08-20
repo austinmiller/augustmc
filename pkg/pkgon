@@ -5,11 +5,11 @@ source common
 target=$1
 check $target "target"
 
-#VBoxManage startvm $target
+VBoxManage startvm $target
 
 ssh $target "cd ~/code/augustmc;git pull"
 scp augustmc*jar $target:~/code/augustmc/pkg
 ssh $target "cd ~/code/augustmc/pkg; ./pkg"
 scp $target:~/code/augustmc/pkg/packages/bundles/* .
 
-#VBoxManage controlvm $target savestate
+VBoxManage controlvm $target savestate
