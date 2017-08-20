@@ -15,3 +15,10 @@ function check() {
   fi
   info "$2 == $1"
 }
+
+function remotehas() {
+  rv=$(ssh $1 "which $2")
+  if [ -z $rv ]; then
+    err "Did not find $2 on $1"
+  fi
+}
