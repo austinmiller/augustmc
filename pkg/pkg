@@ -12,7 +12,7 @@ if [ $uname == "Darwin" ]; then
 elif [ $uname == "Linux" ]; then
   OPTS="-Bcategory=Game" 
   target="deb"
-elif [ $uname == "MSYS_NT-6.1"]; then
+elif [ $uname == "MSYS_NT-6.1" ]; then
   target="installer"
 else
   err "unsupported build environment: $uname"
