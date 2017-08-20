@@ -1,0 +1,14 @@
+#!/bin/bash
+
+source common
+
+time {
+  rm -Rf *jar *exe *deb
+
+  ./build || err "failed to build"
+  ./pkg || err "failed to package on OSX"
+  ./pkgon mint || err "failed to package on mint"
+  ./pkgon win7 || err "failed to package on win7"
+
+  info "ready to release"
+}

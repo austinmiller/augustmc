@@ -1,0 +1,56 @@
+#!/bin/bash
+
+source common
+
+function upload() {
+  curl \
+    -H "Content-Type: $1" \
+    --data-binary @$2 -u "austinmiller:$pw" \
+    https://uploads.github.com/repos/austinmiller/augustmc/releases/$id/assets?name=$3 \
+    > /tmp/res
+  echo $?
+  cat /tmp/res
+}
+
+
+pw=$1
+
+deb=$(ls *deb)
+check $deb deb
+exe=$(ls *exe)
+check $exe exe
+dmg=$(ls *dmg)
+check $dmg dmg
+jar=$(ls augustmc*jar)
+check $jar jar
+
+version=${jar#"augustmc-"}
+version=${version%".jar"}
+check $version version
+
+fw=$(ls framework*$version.jar)
+check $fw fw
+fws=$(ls framework*$version-sources.jar)
+check $fws fws
+
+time {
+
+  releases=$(curl -u "austinmiller:$pw" https://api.github.com/repos/austinmiller/augustmc/releases)
+  length=$(echo $releases | jq 'length')
+
+  for i in $(seq 0 $length); do
+    tag=$(echo $releases | jq ".[$i].tag_name")
+    if [ "$tag" == "\"$version\"" ]; then
+      id=$(echo $releases | jq ".[$i].id")
+    fi
+  done
+
+  check $id "id"
+
+  upload application/vnd.microsoft.portable-executable $exe augustmc-$version.exe
+  upload application/vnd.debian.binary-package $deb augustmc-$version.deb
+  upload application/x-apple-diskimage $dmg augustmc-$version.dmg
+  upload application/zip $jar augustmc-$version.jar
+  upload application/zip $fw framework-$version.jar
+  upload application/zip $fws framework-$version-sources.jar
+}
