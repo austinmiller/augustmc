@@ -5,6 +5,7 @@ import java.awt.{Component, GridLayout}
 import javax.swing.border.EmptyBorder
 import javax.swing.{JPanel, SpringLayout}
 
+import aug.gui.text.HasHighlight
 import aug.profile.{Profile, ProfileConfig}
 
 class ProfilePanel(val mainWindow: MainWindow, val profile: Profile) extends JPanel with HasHighlight {

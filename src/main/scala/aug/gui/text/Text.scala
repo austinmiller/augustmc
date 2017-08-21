@@ -1,4 +1,4 @@
-package aug.gui
+package aug.gui.text
 
 import aug.io._
 import aug.profile.ProfileConfig

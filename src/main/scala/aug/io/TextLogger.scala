@@ -5,7 +5,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.{Executors, LinkedBlockingQueue, TimeUnit}
 
-import aug.gui.{TextState, TextStateColor, TextStateStream}
+import aug.gui.text.{TextState, TextStateColor, TextStateStream}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 

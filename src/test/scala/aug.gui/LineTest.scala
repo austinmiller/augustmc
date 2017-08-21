@@ -1,5 +1,6 @@
 package aug.gui
 
+import aug.gui.text.{Fragment, Line, TextPos}
 import aug.io.{DefaultColorCode, TelnetColorBlue, TelnetColorDefaultBg}
 import org.scalatest.FlatSpec
 

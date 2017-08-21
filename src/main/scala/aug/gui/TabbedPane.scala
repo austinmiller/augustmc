@@ -5,6 +5,7 @@ import javax.swing.border.EmptyBorder
 import javax.swing.event.ChangeEvent
 import javax.swing.{JPanel, JTabbedPane}
 
+import aug.gui.text.{HasHighlight, SplittableTextArea, Text}
 import aug.profile.ProfileConfig
 import aug.util.Util
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI

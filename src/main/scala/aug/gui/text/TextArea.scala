@@ -1,17 +1,12 @@
-package aug.gui
+package aug.gui.text
 
 import java.awt.datatransfer.StringSelection
 import java.awt.event._
 import java.awt.image.BufferedImage
 import java.awt.{Font, Graphics, Toolkit}
-import java.util.Optional
-import javax.swing.border.EmptyBorder
-import javax.swing.{JPanel, JSplitPane}
+import javax.swing.JPanel
 
 import aug.io._
-import aug.profile.{ConfigManager, ProfileConfig}
-import aug.script.framework.{LineEvent, LineWithNum, TextWindowInterface}
-import aug.util.Util
 
 import scala.annotation.tailrec
 
@@ -214,154 +209,6 @@ class TextArea(hasHighlight: HasHighlight, val text: Text) extends JPanel {
 
   addMouseListener(mouse)
   addMouseMotionListener(motionListener)
-}
-
-class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighlight, console: Boolean = true)
-  extends JSplitPane with MouseWheelListener with TextWindowInterface {
-  val text = new Text(profileConfig)
-  private val topTextArea = new TextArea(hasHighlight, text)
-  private val textArea = new TextArea(hasHighlight, text)
-  private var scrollPos : Long = 0
-  private var scrollSpeed = 4
-  private var splittable = true
-
-  setOrientation(JSplitPane.VERTICAL_SPLIT)
-  setDividerSize(1)
-  setTopComponent(topTextArea)
-  setBottomComponent(textArea)
-  setFocusable(false)
-
-  addMouseWheelListener(this)
-
-  unsplit()
-
-  textArea.setVisible(true)
-
-  setBorder(new EmptyBorder(0, 0, 0, 0))
-
-  def setProfileConfig(profileConfig: ProfileConfig): Unit = text.profileConfig = profileConfig
-
-  def setActiveFont(font: Font): Unit = {
-    setFont(font)
-    topTextArea.setActiveFont(font)
-    textArea.setActiveFont(font)
-  }
-
-  override def unsplit(): Unit = {
-    if (isSplit) {
-      topTextArea.setVisible(false)
-      setDividerSize(0)
-      setDividerLocation(0)
-    }
-  }
-
-  def isSplit: Boolean = topTextArea.isVisible
-
-  override def split() : Unit = {
-    if (!isSplit && splittable) {
-      scrollPos = text.length
-      topTextArea.setBotLine(scrollPos)
-      setDividerLocation(0.7)
-      setDividerSize(4)
-      topTextArea.setVisible(true)
-    }
-  }
-
-  def handleDown() : Unit = {
-    if(!isSplit) return
-    val maxPos = text.length
-    scrollPos += scrollSpeed
-
-    if (scrollPos >= maxPos) unsplit() else topTextArea.setBotLine(scrollPos)
-  }
-
-  def handleUp() : Unit = {
-    if(!isSplit) split() else {
-      scrollPos = Math.max(scrollPos - scrollSpeed, 1)
-      topTextArea.setBotLine(scrollPos)
-    }
-  }
-
-  override def mouseWheelMoved(e: MouseWheelEvent): Unit = {
-    if(e.getWheelRotation < 0) handleUp() else handleDown()
-    e.consume()
-  }
-
-  override def echo(line: String): Unit = {
-    if (console) throw new Exception("cannot echo to console")
-    text.addLine(line)
-    repaint()
-  }
-
-  override def clear(): Unit = {
-    if (console) throw new Exception("cannot clear console from API")
-    text.clear()
-    repaint()
-  }
-
-  override def setSplittable(splittable: Boolean): Unit = {
-    this.splittable = splittable
-    if (!splittable) unsplit()
-  }
-
-  override def setLine(lineWithNum: LineWithNum): Unit = {
-    if (console) throw new RuntimeException("cannot edit console")
-    text.setLine(lineWithNum.lineNum, lineWithNum.line)
-    repaint()
-  }
-
-  override def setHighlightable(highlightable: Boolean): Unit = {
-    textArea.setHighlightable(highlightable)
-    topTextArea.setHighlightable(highlightable)
-  }
-
-  private def getColorScheme(colorSchemeName: String): Option[ColorScheme] = {
-    ConfigManager.getMainConfig.colorSchemes.find(_.name == colorSchemeName).map(new ConfigurableColorScheme(_))
-  }
-
-  override def setColorScheme(colorSchemeName: String): Unit = {
-    getColorScheme(colorSchemeName).foreach {cs =>
-      textArea.setColorScheme(cs)
-      topTextArea.setColorScheme(cs)
-    }
-  }
-
-  override def setTextFont(fontName: String, size: Int): Unit = {
-    if (console) throw new RuntimeException("use preferences to set console font.")
-
-    if (!Util.fontSizes.contains(size))
-      throw new RuntimeException(s"Font size $size is not in list ${Util.fontSizes}.")
-
-    if (!Util.monospaceFamilies.contains(fontName))
-      throw new RuntimeException(s"Font $fontName is not in list ${Util.monospaceFamilies}.")
-
-    setActiveFont(new Font(fontName, 0, size))
-  }
-
-
-  override def getFontSizes: Array[Int] = Util.fontSizes
-
-  override def getFonts: Array[String] = Util.monospaceFamilies.toArray
-
-  override def setTopColorScheme(colorSchemeName: String): Unit = {
-    getColorScheme(colorSchemeName).foreach(topTextArea.setColorScheme)
-  }
-
-  override def setBottomColorScheme(colorSchemeName: String): Unit = {
-    getColorScheme(colorSchemeName).foreach(textArea.setColorScheme)
-  }
-
-  override def getLine(lineNum: Long): Optional[LineEvent] = {
-    val opt: Option[LineEvent] = text.get(lineNum).map(_.colorStr).map{ raw =>
-      new LineEvent(lineNum, raw)
-    }
-    Optional.of(opt.orNull)
-  }
-
-  override def setLines(lines: Array[LineWithNum]): Unit = {
-    text.setLines(lines)
-    repaint()
-  }
 }
 
 trait HasHighlight {

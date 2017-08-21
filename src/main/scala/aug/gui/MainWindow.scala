@@ -6,6 +6,7 @@ import javax.imageio.ImageIO
 import javax.swing._
 
 import aug.gui.settings.SettingsWindow
+import aug.gui.text.HasHighlight
 import aug.io.{ConnectionManager, SystemLog, TransparentColor}
 import aug.profile.{ConfigManager, Profile}
 import aug.util.Util

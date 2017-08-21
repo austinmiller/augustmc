@@ -8,7 +8,8 @@ import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
-import aug.gui.{HasHighlight, MainWindow, ProfilePanel, SplittableTextArea}
+import aug.gui.text.{HasHighlight, SplittableTextArea}
+import aug.gui.{MainWindow, ProfilePanel}
 import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
 import aug.script.framework._
 import aug.script.framework.tools.ScalaUtils
