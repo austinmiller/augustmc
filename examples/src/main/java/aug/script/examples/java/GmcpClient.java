@@ -9,4 +9,15 @@ public class GmcpClient extends WindowClient {
 
         com.echo(gmcp);
     }
+
+    @Override
+    public boolean handleCommand(String command) {
+
+        if (command.equals("#help")) {
+            console.echo("Help! I need somebody.");
+            return true;
+        }
+
+        return false;
+    }
 }

@@ -87,6 +87,11 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
     repaint()
   }
 
+  override def echo(lines: Array[String]): Unit = {
+    lines.foreach(l=> text.addLine(l))
+    repaint()
+  }
+
   override def clear(): Unit = {
     text.clear()
     repaint()

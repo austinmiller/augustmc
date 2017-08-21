@@ -13,6 +13,12 @@ public interface TextWindowInterface {
     void echo(String line);
 
     /**
+     * <p>Send a full lines to the window.  It is not necessary to add a
+     * newline.  This does not involve the event thread.</p>
+     */
+    void echo(String []lines);
+
+    /**
      * <p>Completely clear the text buffer.</p>
      */
     void clear();
