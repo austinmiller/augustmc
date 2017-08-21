@@ -141,4 +141,12 @@ object Util {
     desirableFonts.find(monospaceFamilies.contains).map(new Font(_, 0, 12))
       .getOrElse(new Font(Font.MONOSPACED, 0, 12))
   }
+
+  def closeQuietly[T](f: => T): Unit = {
+    try {
+      f
+    } catch {
+      case _: Throwable =>
+    }
+  }
 }

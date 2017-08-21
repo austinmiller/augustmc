@@ -113,6 +113,7 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   private var threadId: Option[Long] = None
   private val executorService = Executors.newFixedThreadPool(1)
   private var scheduler: Option[Scheduler] = None
+  private var inError: Boolean = false
 
   executorService.submit(new Runnable {
     override def run(): Unit = {
@@ -148,7 +149,7 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   override def shutdown(): ReloadData = {
 
     val m: ReloadData = try {
-      execute(client.shutdown())
+      executeOnThread(client.shutdown(), cancelOnTimeout = false)
     } catch {
       case e: TimeoutException =>
         profile.slog.error(s"client timed out while shutting down (very bad!)\n$threadInfo")
@@ -162,7 +163,13 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
     if (m == null) new ReloadData else m
   }
 
-  private def execute[ReturnType](f: => ReturnType, cancelOnTimeout: Boolean = true): ReturnType = {
+  private def execute[ReturnType](f: => ReturnType): ReturnType = {
+    if (inError) throw new RuntimeException("client is in error")
+
+    executeOnThread(f, cancelOnTimeout = true)
+  }
+
+  private def executeOnThread[ReturnType](f: => ReturnType, cancelOnTimeout: Boolean): ReturnType = {
     val future = executorService.submit(new Callable[ReturnType] {
       override def call(): ReturnType = f
     })
@@ -174,10 +181,12 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
       case Failure(e: TimeoutException) =>
         val to = ClientTimeoutException(threadInfo)
         if (cancelOnTimeout) future.cancel(true)
-        throw to
+        inError = true
+        throw e
 
       case Failure(e) =>
         profile.handleClientException(e)
+        inError = true
         throw e
     }
   }

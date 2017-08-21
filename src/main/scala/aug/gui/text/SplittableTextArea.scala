@@ -11,7 +11,7 @@ import aug.profile.{ConfigManager, ProfileConfig}
 import aug.script.framework.{LineEvent, LineWithNum, TextWindowInterface}
 import aug.util.Util
 
-class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighlight, console: Boolean = true)
+class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighlight)
   extends JSplitPane with MouseWheelListener with TextWindowInterface {
   val text = new Text(profileConfig)
   private val topTextArea = new TextArea(hasHighlight, text)
@@ -83,13 +83,11 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
   }
 
   override def echo(line: String): Unit = {
-    if (console) throw new Exception("cannot echo to console")
     text.addLine(line)
     repaint()
   }
 
   override def clear(): Unit = {
-    if (console) throw new Exception("cannot clear console from API")
     text.clear()
     repaint()
   }
@@ -100,7 +98,6 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
   }
 
   override def setLine(lineWithNum: LineWithNum): Unit = {
-    if (console) throw new RuntimeException("cannot edit console")
     text.setLine(lineWithNum.lineNum, lineWithNum.line)
     repaint()
   }
@@ -122,7 +119,6 @@ class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighligh
   }
 
   override def setTextFont(fontName: String, size: Int): Unit = {
-    if (console) throw new RuntimeException("use preferences to set console font.")
 
     if (!Util.fontSizes.contains(size))
       throw new RuntimeException(s"Font size $size is not in list ${Util.fontSizes}.")

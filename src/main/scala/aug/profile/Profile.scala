@@ -8,9 +8,9 @@ import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
-import aug.gui.text.{HasHighlight, SplittableTextArea}
+import aug.gui.text.{ConsoleTextArea, HasHighlight, SplittableTextArea}
 import aug.gui.{MainWindow, ProfilePanel}
-import aug.io.{ColorlessTextLogger, Mongo, PrefixSystemLog, Telnet, TextLogger}
+import aug.io.{Mongo, PrefixSystemLog, Telnet}
 import aug.script.framework._
 import aug.script.framework.tools.ScalaUtils
 import aug.script.{Client, ClientCaller, ClientTimeoutException, ScriptLoader}
@@ -73,35 +73,31 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   with HasHighlight {
 
   import Profile.log
+  import Util.closeQuietly
 
   val profilePanel = new ProfilePanel(mainWindow, this)
   val name: String = profileConfig.name
   val slog = new PrefixSystemLog(s"[$name]: ", mainWindow.slog)
   mainWindow.tabbedPane.addProfile(name, profilePanel)
+  val logDir = new File(ConfigManager.getProfileDir(name), "log")
+  logDir.mkdir()
 
   private val thread = new Thread(() => threadLoop(), "ProfileThread: " + name)
   private val windows = scala.collection.mutable.Map[String, SplittableTextArea]()
   private val threadQueue = new PriorityBlockingQueue[ProfileEvent]()
   private val running = new AtomicBoolean(true)
-  private val logDir = new File(ConfigManager.getProfileDir(name), "log")
-  logDir.mkdir()
 
   private var telnet : Option[Telnet] = None
   private var client : Option[Client] = None
   private var mongo : Option[Mongo] = None
   private var db : Option[(MongoClient, MongoDatabase)] = None
-  private var textLogger : Option[TextLogger] = None
-  private var colorlessTextLogger : Option[ColorlessTextLogger] = None
-  private var lineNum: Long = 0
-  private var fragment: String = ""
   private var clientReloadData = new ReloadData
   private var schedulerState = List.empty[String]
-  private var lastGA: Boolean = false
 
-  val console = new SplittableTextArea(profileConfig, this)
+  val console = new ConsoleTextArea(profileConfig, this)
   windows("console") = console
 
-  addLine("profile: " + profileConfig.name)
+  console.addLine("profile: " + profileConfig.name)
 
   thread.setUncaughtExceptionHandler((t: Thread, e: Throwable) => {
     e.printStackTrace()
@@ -154,10 +150,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
         val event = threadQueue.take()
         event match {
           case TelnetConnect(id, url, port) =>
-            addLine(ScalaUtils.encodeColor("0") + "--connected--")
+            console.addLine(ScalaUtils.encodeColor("0") + "--connected--")
             slog.info(s"connected $telnet")
 
-            client.foreach(_.onConnect(id, url, port))
+            withClient(_.onConnect(id, url, port))
 
           case TelnetError(data) =>
             slog.info(s"telnet error: $data")
@@ -167,10 +163,10 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             slog.info(s"disconnected $id")
 
           case TelnetRecv(data, ga) =>
-            processText(data, ga)
+            console.processText(data, ga)
 
           case TelnetGMCP(data) =>
-            client.foreach(_.handleGmcp(data))
+            withClient(_.handleGmcp(data))
 
           case UserCommand(data) =>
             client match {
@@ -186,8 +182,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
             closeQuietly(telnet.foreach(_.close()))
             closeQuietly(client.foreach(_.shutdown()))
             closeQuietly(mongo.foreach(_.close()))
-            closeQuietly(textLogger.foreach(_.close()))
-            closeQuietly(colorlessTextLogger.foreach(_.close()))
             mainWindow.tabbedPane.remove(profilePanel)
 
           case ProfileConnect() =>
@@ -242,24 +236,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 slog.info(f"no client to shutdown")
             }
 
-          case SendData(cmds, silent) => sendNow(cmds, silent)
+          case SendData(cmds, silent) =>
+            sendNow(cmds, silent)
 
           case ProfileLog(on, color) =>
-            if (!on && color && textLogger.isDefined) {
-              closeQuietly(textLogger.foreach(_.close()))
-              textLogger = None
-              slog.info(s"no longer logging colored text")
-            } else if (on && color && textLogger.isEmpty) {
-              textLogger = Some(new TextLogger(logDir))
-              slog.info(s"logging color to $logDir")
-            } else if (!on && !color && colorlessTextLogger.isDefined) {
-              closeQuietly(colorlessTextLogger.foreach(_.close()))
-              colorlessTextLogger = None
-              slog.info(s"no longer logging")
-            } else if (on && !color && textLogger.isEmpty) {
-              colorlessTextLogger = Some(new ColorlessTextLogger(logDir))
-              slog.info(s"logging to $logDir")
-            }
+            console.log(on, color)
 
           case MongoStart() =>
             mongo = Some(new Mongo(this, profileConfig))
@@ -273,7 +254,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case MongoInit(mongoClient: MongoClient, db: MongoDatabase) =>
             if (mongo.isDefined) {
               this.db = Some((mongoClient, db))
-              client.foreach(_.initDB(mongoClient, db))
+              withClient(_.initDB(mongoClient, db))
             }
 
           case unhandledEvent =>
@@ -328,12 +309,14 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     slog.error(s"received exception from client", throwable)
   }
 
-  private def closeQuietly[T](f: => T): Unit = {
+  def withClient[RT](f: (Client) => RT): Option[RT] = {
     try {
-      f
+      client.map(f)
     } catch {
-      case _: Throwable =>
+      case to: ClientTimeoutException => clientTimedOut(to)
+      case _ =>
     }
+    None
   }
 
   /**
@@ -345,35 +328,11 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   private def onDisconnect(id: Long): Unit = {
     telnet.foreach{ t=>
       if (t.id == id) {
-        addLine(ScalaUtils.encodeColor("0") + "--disconnected--")
-        client.foreach(_.onDisconnect(id))
+        console.addLine(ScalaUtils.encodeColor("0") + "--disconnected--")
+        withClient(_.onDisconnect(id))
       }
       telnet = None
     }
-  }
-
-  /**
-    * <p>Echo cmd to console</p>
-    *
-    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
-    *
-    */
-  private def echoCommand(cmd: String) : Unit = {
-    val ln = if (fragment.length > 0) lineNum else lineNum - 1
-    console.text.addCommand(ln, cmd)
-    console.repaint()
-  }
-
-  /**
-    * <p>Add line to console</p>
-    *
-    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
-    */
-  private def addLine(line: String) : Unit = {
-    console.text.setLine(lineNum, line)
-    lineNum += 1
-    fragment = ""
-    console.repaint()
   }
 
   /**
@@ -392,70 +351,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
   }
 
   /**
-    * <p>Process text sent from server.</p>
-    *
-    * <p><STRONG>This should only be called by the event thread!</STRONG></p>
-    */
-  private def processText(txt: String, ga: Boolean) : Unit = {
-
-    if (lastGA) {
-      addLine(fragment)
-    }
-
-    lastGA = ga
-
-    textLogger.foreach(_.addText(txt))
-    colorlessTextLogger.foreach(_.addText(txt))
-
-    var to : Option[ClientTimeoutException] = None
-
-    @tailrec
-    def handleText(texts: List[String]): Unit = {
-      texts match {
-
-        case List(last) =>
-          fragment += last
-          console.text.setLine(lineNum, fragment)
-          console.repaint()
-
-          if (to.isEmpty && client.isDefined) {
-            Try {
-              client.get.handleFragment(new LineEvent(lineNum, fragment))
-            } match {
-              case Failure(e: ClientTimeoutException) => to = Some(e)
-              case _ =>
-            }
-          }
-
-        case text :: tail =>
-          val line = fragment + text
-
-          if (to.isEmpty && client.isDefined) {
-            Try {
-              if(!client.get.handleLine(new LineEvent(lineNum, line))) {
-                addLine(line)
-              }
-            } match {
-              case Failure(e: ClientTimeoutException) =>
-                addLine(line)
-                to = Some(e)
-              case _ =>
-            }
-          } else {
-            addLine(line)
-          }
-
-          handleText(tail)
-
-        case Nil =>
-      }
-    }
-
-    handleText(txt.split("\n", -1).toList)
-    to.foreach(clientTimedOut)
-  }
-
-  /**
     * <p>Send text now, without using event loop.</p>
     *
     * <p><STRONG>This should only be called by the event thread!</STRONG></p>
@@ -466,7 +361,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       case Some(t) =>
         cmds.split("\n").foreach { cmd =>
           t.send(cmd + "\n")
-          if (!silent) echoCommand(cmd)
+          if (!silent) console.echoCommand(cmd)
         }
 
       case None => slog.info(s"command ignored: $cmds")
@@ -554,7 +449,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     */
   private[profile] def createTextWindow(name: String): TextWindowInterface = {
     windows.getOrElseUpdate(name, {
-      val sta = new SplittableTextArea(profileConfig, this, false)
+      val sta = new SplittableTextArea(profileConfig, this)
       sta.setActiveFont(profileConfig.consoleWindow.font.toFont)
       sta
     })
@@ -571,7 +466,7 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     * <p><STRONG>This should *only* be called by the client.</STRONG></p>
     */
   def getScheduler(reloaders: Seq[RunnableReloader[_ <: Runnable]]): SchedulerInterface = {
-    client.map(_.getScheduler(schedulerState, reloaders)).getOrElse(throw new RuntimeException("client not found"))
+    withClient(_.getScheduler(schedulerState, reloaders)).getOrElse(throw new RuntimeException("client not found"))
   }
 }
 
