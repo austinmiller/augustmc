@@ -88,9 +88,23 @@ class JavaCollectionConverter[T <: util.Collection[String]](implicit ct: ClassTa
   }
 }
 
-object Reloader {
+class CaseObjectConverter[T](implicit ct: ClassTag[T]) extends Converter[T] {
   import scala.reflect.runtime.universe
   private val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
+
+  override def convertToValue(string: String): T = {
+    val module = runtimeMirror.staticModule(string)
+    runtimeMirror.reflectModule(module).instance.asInstanceOf[T]
+  }
+
+  override def convertToString(t: T): String = {
+    val n = t.getClass.getName
+    println("yo:"+ n)
+    n
+  }
+}
+
+object Reloader {
 
   // order matters here, more commonly used types first
   private val converters: List[Converter[_]] = List(
@@ -313,11 +327,6 @@ object Reloader {
 
   private def extractInstanceKey(string: String): Long = {
     string.split("\\|")(1).split("#")(0).toLong
-  }
-
-  private def getStaticObj(s: String): Any = {
-    val module = runtimeMirror.staticModule(s)
-    runtimeMirror.reflectModule(module).instance
   }
 
   private def put(reloadData: ReloadData, cl: Class[_], f: Field, s: String): Unit = {
