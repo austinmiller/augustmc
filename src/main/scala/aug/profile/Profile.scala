@@ -313,10 +313,12 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
     try {
       client.map(f)
     } catch {
-      case to: ClientTimeoutException => clientTimedOut(to)
-      case _ =>
+      case to: ClientTimeoutException =>
+        clientTimedOut(to)
+        None
+      case _ : Throwable =>
+        None
     }
-    None
   }
 
   /**
