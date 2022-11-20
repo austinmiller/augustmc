@@ -19,7 +19,11 @@ lazy val commonSettings = Seq(
     "commons-io" % "commons-io" % "2.5",
     "commons-lang" % "commons-lang" % "2.6",
     "org.scalatest" %% "scalatest" % "3.2.0-SNAP9" % "test",
-    "mrj" % "MRJToolkitStubs" % "1.0"
+    "mrj" % "MRJToolkitStubs" % "1.0",
+    "javax.xml.bind" % "jaxb-api" % "2.3.1",
+    "com.sun.xml.bind" % "jaxb-core" % "2.3.0",
+    "com.sun.xml.bind" % "jaxb-impl" % "2.3.0",
+    "javax.activation" % "activation" % "1.1.1"
   )
 ) ++ oneJarSettings
 
