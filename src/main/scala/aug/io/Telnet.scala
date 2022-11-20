@@ -1,16 +1,15 @@
 package aug.io
 
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.Inflater
-
 import aug.profile._
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
+import java.nio.ByteBuffer
 import scala.util.{Failure, Try}
 
 sealed trait TelnetState
@@ -19,7 +18,6 @@ case object Stream extends TelnetState
 case object Command extends TelnetState
 case object Option extends TelnetState
 case object SubNegotiation extends TelnetState
-
 
 sealed abstract class TelnetCommand(val code: Byte, val text: String)
 
@@ -47,7 +45,6 @@ case object OptionAard102 extends TelnetOption(102.toByte,"AARD102")
 case object OptionAtcp extends TelnetOption(200.toByte,"ATCP")
 case object OptionGmcp extends TelnetOption(201.toByte,"GMCP")
 case class OptionUnknown(unknownCode: Byte) extends TelnetOption(unknownCode,"UNKNOWN")
-
 
 object Telnet {
   private val log = Logger(LoggerFactory.getLogger(Telnet.getClass))
@@ -96,7 +93,7 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
   private val inflater = new Inflater()
   private val inflateBuffer = ByteBuffer.allocate(1<<16)
-  private val postBuffer = ByteBuffer.allocate(1<<16)
+  private val postBuffer: ByteBuffer = ByteBuffer.allocate(1<<16)
 
   private var compressed = false
   private var state : TelnetState = Stream
@@ -288,9 +285,9 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
   }
 
   private def post(withGA: Boolean = false): Unit = {
-    if (postBuffer.position == 0 && !withGA) return
+    if (postBuffer.position() == 0 && !withGA) return
 
-    val msg = new String(postBuffer.array, 0, postBuffer.position)
+    val msg = new String(postBuffer.array, 0, postBuffer.position())
 
     profile.offer(TelnetRecv(msg, withGA))
     postBuffer.position(0)

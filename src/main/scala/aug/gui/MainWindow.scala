@@ -206,7 +206,7 @@ object Main extends App {
 
   OsTools.init("August MC")
 
-  if(OsTools.isLinux) {
+  if (OsTools.isLinux) {
     // IconLoader has NPE without this.
     UIManager.getFont("Label.font")
   }

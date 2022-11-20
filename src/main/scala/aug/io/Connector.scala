@@ -18,6 +18,7 @@ trait Connector {
   def select(): Unit
   def finishConnect(): Unit
   def onDisconnect(): Unit
+  def isConnected(): Boolean
   def onCancel(): Unit
   def read(): Unit
   def write(): Unit
@@ -41,7 +42,7 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
   private var out : Option[ByteBuffer] = None
 
   def isClosed: Boolean = closed.get
-  def isConnected: Boolean = connected.get
+  override def isConnected: Boolean = channel.isConnected
 
   override def close() : Unit = {
     if(!closed.compareAndSet(false, true)) return
@@ -71,9 +72,18 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
 
   override def finishConnect() : Unit = {
     Try {
-      if(isClosed) throw new IOException("closed")
+      log.info("already connected? {}", channel.isConnected)
+
+      if (isClosed) {
+        throw new IOException("closed")
+      }
+
       channel.finishConnect()
-      if(!channel.isOpen || !channel.isConnected) throw new IOException("channel is not open or connected")
+
+      if (!channel.isOpen || !channel.isConnected) {
+        throw new IOException("channel is not open or connected")
+      }
+
       connected.set(true)
     } match {
       case Failure(e) =>
@@ -102,11 +112,11 @@ abstract class AbstractConnection(val address: InetSocketAddress) extends Connec
 
       val read = channel.read(in)
 
-      if(read < 0) throw new IOException("connection reset by peer")
+      if (read < 0) throw new IOException("connection reset by peer")
 
       in.flip
 
-      if(!in.hasRemaining) return
+      if (!in.hasRemaining) return
 
       val copy = new Array[Byte](in.limit)
       System.arraycopy(in.array(), 0, copy, 0, copy.length)
@@ -176,7 +186,7 @@ trait Server {
 
 
 object ConnectionManager extends AutoCloseable with Runnable  {
-  val log = Logger(LoggerFactory.getLogger(ConnectionManager.getClass))
+  val log: Logger = Logger(LoggerFactory.getLogger(ConnectionManager.getClass))
 
   private val closed = new AtomicBoolean(false)
   private val selector : Selector = Selector.open
@@ -216,7 +226,7 @@ object ConnectionManager extends AutoCloseable with Runnable  {
     connectors += connector
     ch.register(selector, ops, connector)
 
-    if( log.underlying.isDebugEnabled) {
+    if (log.underlying.isDebugEnabled) {
       selector.keys.asScala.foreach { sk => log.debug("class={}", sk.attachment.getClass.getCanonicalName) }
     }
 
@@ -243,7 +253,7 @@ object ConnectionManager extends AutoCloseable with Runnable  {
   }
 
   override def run() : Unit = {
-    while(!closed.get && selector.isOpen) {
+    while (!closed.get && selector.isOpen) {
       try {
         selectCallback()
         selector.selectNow
@@ -262,7 +272,7 @@ object ConnectionManager extends AutoCloseable with Runnable  {
   private def processKeys(): Unit = selector.selectedKeys.asScala.foreach(processKey)
 
   private def processKey(key : SelectionKey): Unit = {
-    if(!key.isValid) {
+    if (!key.isValid) {
       key.attachment match {
         case c: Connector => c.onCancel()
         case _ =>
@@ -271,21 +281,21 @@ object ConnectionManager extends AutoCloseable with Runnable  {
       return
     }
 
-    if(key.isAcceptable) {
+    if (key.isAcceptable) {
       key.attachment match {
         case server: Server => server.accept()
         case _ =>
       }
     }
 
-    if(key.isConnectable) {
+    if (key.isConnectable) {
       key.attachment match {
         case connector: Connector => connector.finishConnect()
         case _ =>
       }
     }
 
-    if(key.isReadable) {
+    if (key.isReadable) {
       Try {
         key.attachment match {
           case connector: Connector => connector.read()
@@ -301,7 +311,7 @@ object ConnectionManager extends AutoCloseable with Runnable  {
       }
     }
 
-    if(key.isValid && key.isWritable) {
+    if (key.isValid && key.isWritable) {
       Try {
         key.attachment match {
           case connector: Connector => connector.write()
