@@ -3,8 +3,6 @@ package aug.script.framework.tools
 import java.io.{PrintWriter, StringWriter}
 import java.util.regex.Pattern
 
-import aug.script.framework.reload.ReloadException
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -40,7 +38,7 @@ object ScalaUtils {
     def process(string: String): Unit = {
       if (string.nonEmpty) {
         val tokens = string.split(":", 2)
-        if (tokens.length != 2) throw new ReloadException("failure decoding collection")
+        if (tokens.length != 2) throw new UnsupportedOperationException("failure decoding collection")
         val len = tokens(0).toInt
         val (head, tail) = tokens(1).splitAt(len)
         builder += head

@@ -3,22 +3,25 @@ import Dependencies._
 import sbt.Keys._
 
 lazy val macroSettings = Seq(
-  libraryDependencies += scalameta,
-  addCompilerPlugin(paradise),
-  scalacOptions += "-Xplugin-require:macroparadise"
+//  libraryDependencies += scalameta,
+//  addCompilerPlugin(paradise),
+//  scalacOptions += "-Xplugin-require:macroparadise"
 )
 
 lazy val commonSettings = Seq(
-  version := "2017.4",
-  scalaVersion := scala212,
+  version := "2022.1",
+  scalaVersion := scala213,
   exportJars := true,
   libraryDependencies ++= Seq(
-    "ch.qos.logback" %  "logback-classic" % "1.1.7",
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
-    "org.mongodb.scala" %% "mongo-scala-driver" % "2.1.0",
-    "commons-io" % "commons-io" % "2.5",
+    "org.apache.logging.log4j" % "log4j-core" % "2.19.0",
+    "org.apache.logging.log4j" % "log4j-api" % "2.19.0",
+    "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.19.0",
+    "org.slf4j" % "slf4j-api" % "1.7.36",
+    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+    "org.mongodb.scala" %% "mongo-scala-driver" % "4.8.0",
+    "commons-io" % "commons-io" % "2.11.0",
     "commons-lang" % "commons-lang" % "2.6",
-    "org.scalatest" %% "scalatest" % "3.2.0-SNAP9" % "test",
+    "org.scalatest" %% "scalatest" % "3.2.14" % "test",
     "mrj" % "MRJToolkitStubs" % "1.0",
     "javax.xml.bind" % "jaxb-api" % "2.3.1",
     "com.sun.xml.bind" % "jaxb-core" % "2.3.0",

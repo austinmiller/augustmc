@@ -116,14 +116,10 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
     Array(TelnetIac.code, command.code, option.code)
   }
 
-  override def finishConnect(): Unit = {
-    super.finishConnect()
-    quickConnect()
-  }
-
-  override def quickConnect(): Unit = {
+  override def onConnect(): Unit = {
+    super.onConnect()
     log.info(s"finished connect to $url:$port, closed ==")
-    if(!isClosed) profile.offer(TelnetConnect(id, url, port))
+    if (!isClosed) profile.offer(TelnetConnect(id, url, port))
   }
 
   private def handleByte(c: Byte): Unit = {
@@ -320,8 +316,6 @@ class Telnet(profile: Profile, val profileConfig: ProfileConfig) extends
 
     log.trace("readRaw: {}",remaining)
   }
-
-  override def select(): Unit = {}
 
   def send(command: TelnetCommand, option: TelnetOption): Unit = {
     log.debug("send: IAC {} {}", command.text, option.text)
