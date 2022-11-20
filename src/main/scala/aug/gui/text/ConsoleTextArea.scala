@@ -3,7 +3,7 @@ package aug.gui.text
 import aug.io.{ColorlessTextLogger, TextLogger}
 import aug.profile.{Profile, ProfileConfig}
 import aug.script.framework.{LineEvent, LineWithNum}
-import aug.util.Util.closeQuietly
+import aug.misc.Util.closeQuietly
 
 import scala.annotation.tailrec
 

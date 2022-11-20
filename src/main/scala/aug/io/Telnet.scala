@@ -5,7 +5,7 @@ import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.Inflater
 import aug.profile._
-import aug.util.Util
+import aug.misc.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 

@@ -7,7 +7,7 @@ import javax.swing.{JPanel, JTabbedPane}
 
 import aug.gui.text.{HasHighlight, SplittableTextArea, Text}
 import aug.profile.ProfileConfig
-import aug.util.Util
+import aug.misc.Util
 import com.bulenkov.darcula.ui.DarculaTabbedPaneUI
 
 class SystemPanel(mainWindow: MainWindow) extends JPanel with HasHighlight {

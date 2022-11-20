@@ -6,7 +6,7 @@ import javax.swing._
 import javax.swing.event.{DocumentEvent, DocumentListener}
 
 import aug.profile.FontConfig
-import aug.util.Util
+import aug.misc.Util
 
 class RegexTextField(pattern: String, columns: Int, valueChangedCallback: () => Unit) extends JTextField(columns) {
 

@@ -7,7 +7,7 @@ import javax.swing.event.CaretEvent
 
 import aug.io.SidePanelColor
 import aug.profile.{Profile, UserCommand}
-import aug.util.RingBuffer
+import aug.misc.RingBuffer
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 

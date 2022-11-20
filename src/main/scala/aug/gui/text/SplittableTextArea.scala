@@ -9,7 +9,7 @@ import javax.swing.border.EmptyBorder
 import aug.io.{ColorScheme, ConfigurableColorScheme}
 import aug.profile.{ConfigManager, ProfileConfig}
 import aug.script.framework.{LineEvent, LineWithNum, TextWindowInterface}
-import aug.util.Util
+import aug.misc.Util
 
 class SplittableTextArea(profileConfig: ProfileConfig, hasHighlight: HasHighlight)
   extends JSplitPane with MouseWheelListener with TextWindowInterface {

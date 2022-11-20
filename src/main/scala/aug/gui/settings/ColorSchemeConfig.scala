@@ -11,7 +11,7 @@ import javax.swing.plaf.ButtonUI
 
 import aug.io.{ConfigurableColorScheme, DefaultColorScheme, TelnetColorBlack, TelnetColorBlue, TelnetColorCyan, TelnetColorDefaultBg, TelnetColorDefaultFg, TelnetColorGreen, TelnetColorMagenta, TelnetColorRed, TelnetColorWhite, TelnetColorYellow}
 import aug.profile.ColorSchemeConfig
-import aug.util.Util
+import aug.misc.Util
 
 import scala.collection.mutable
 

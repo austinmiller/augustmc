@@ -6,7 +6,7 @@ import javax.xml.bind.{JAXBContext, Marshaller}
 import javax.xml.bind.annotation.{XmlAccessType, XmlAccessorType, XmlRootElement}
 
 import aug.gui.MainWindow
-import aug.util.{TryWith, Util}
+import aug.misc.{TryWith, Util}
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 

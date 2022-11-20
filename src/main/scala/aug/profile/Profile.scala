@@ -14,7 +14,7 @@ import aug.io.{PrefixSystemLog, Telnet}
 import aug.script.framework._
 import aug.script.framework.tools.ScalaUtils
 import aug.script.{Client, ClientCaller, ClientTimeoutException, ScriptLoader}
-import aug.util.Util
+import aug.misc.Util
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
