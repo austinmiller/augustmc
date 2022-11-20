@@ -79,18 +79,6 @@ case class FontConfig(
 
 @XmlRootElement(name = "WindowConfig")
 @XmlAccessorType(XmlAccessType.FIELD)
-case class MongoConfig(
-                      enabled: Boolean = false,
-                      user: String = "",
-                      password: String = "",
-                      db: String = "",
-                      host: String = "localhost"
-                      ) {
-  private def this() = this(false)
-}
-
-@XmlRootElement(name = "WindowConfig")
-@XmlAccessorType(XmlAccessType.FIELD)
 case class WindowConfig(
                        name: String = "console",
                        font: FontConfig = FontConfig(),
@@ -119,7 +107,6 @@ case class ProfileConfig(
                           javaConfig: JavaConfig = JavaConfig(),
                           commandLineFont: FontConfig = FontConfig(),
                           consoleWindow: WindowConfig = WindowConfig(),
-                          mongoConfig: MongoConfig = MongoConfig(),
                           autoLog: String = "none"
                      ) {
   private def this() = this("")

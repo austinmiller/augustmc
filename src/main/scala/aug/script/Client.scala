@@ -8,7 +8,6 @@ import java.util.concurrent.{Callable, Executors, TimeUnit}
 import aug.profile._
 import aug.script.framework._
 import com.typesafe.scalalogging.Logger
-import org.mongodb.scala.{MongoClient, MongoDatabase}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.TimeoutException
@@ -78,8 +77,7 @@ private class ScriptLoader(val urls: Array[URL]) extends ClassLoader(Thread.curr
       ScriptLoader.FRAMEWORK_CLASSPATH,
       "aug.script.examples",
       "java",
-      "scala",
-      "org.mongodb"
+      "scala"
     )
 
     def deferToParent(name: String) : Boolean = parentPrefixes.exists(name.startsWith)
@@ -199,5 +197,4 @@ class Client private[script](profile: Profile, profileConfig: ProfileConfig, cli
   override def onDisconnect(id: Long): Unit = execute(client.onDisconnect(id))
   override def handleGmcp(s: String): Unit = execute(client.handleGmcp(s))
   override def handleCommand(s: String): Boolean = execute(client.handleCommand(s))
-  override def initDB(mc: MongoClient, md: MongoDatabase): Unit = execute(client.initDB(mc, md))
 }

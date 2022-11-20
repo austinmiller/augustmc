@@ -18,7 +18,6 @@ lazy val commonSettings = Seq(
     "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.19.0",
     "org.slf4j" % "slf4j-api" % "1.7.36",
     "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-    "org.mongodb.scala" %% "mongo-scala-driver" % "4.8.0",
     "commons-io" % "commons-io" % "2.11.0",
     "commons-lang" % "commons-lang" % "2.6",
     "org.scalatest" %% "scalatest" % "3.2.14" % "test",

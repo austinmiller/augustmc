@@ -10,13 +10,12 @@ import javax.swing.{BorderFactory, JSplitPane, SwingUtilities}
 
 import aug.gui.text.{ConsoleTextArea, HasHighlight, SplittableTextArea}
 import aug.gui.{MainWindow, ProfilePanel}
-import aug.io.{Mongo, PrefixSystemLog, Telnet}
+import aug.io.{PrefixSystemLog, Telnet}
 import aug.script.framework._
 import aug.script.framework.tools.ScalaUtils
 import aug.script.{Client, ClientCaller, ClientTimeoutException, ScriptLoader}
 import aug.util.Util
 import com.typesafe.scalalogging.Logger
-import org.mongodb.scala.{MongoClient, MongoDatabase}
 import org.slf4j.LoggerFactory
 
 import scala.annotation.tailrec
@@ -54,10 +53,6 @@ case class TelnetDisconnect(id: Long) extends AbstractProfileEvent(Int.MinValue 
 case class UserCommand(data: String) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class SendData(data: String, silent: Boolean = false) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
 case class ProfileLog(on: Boolean, color: Boolean) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
-case class MongoStart() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
-case class MongoInit(client: MongoClient, db: MongoDatabase) extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
-case class MongoStop() extends AbstractProfileEvent(Int.MinValue + 1, EventId.nextId)
-
 case class ClientEvent(event: ClientCaller) extends AbstractProfileEvent(Int.MinValue + 2, EventId.nextId)
 
 case class TelnetError(data: String) extends AbstractProfileEvent(0, EventId.nextId)
@@ -89,8 +84,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   private var telnet : Option[Telnet] = None
   private var client : Option[Client] = None
-  private var mongo : Option[Mongo] = None
-  private var db : Option[(MongoClient, MongoDatabase)] = None
   private var clientReloadData = new ReloadData
   private var schedulerState = List.empty[String]
 
@@ -111,10 +104,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
 
   if (profileConfig.javaConfig.clientMode == "autostart") {
     offer(ClientStart())
-  }
-
-  if (profileConfig.mongoConfig.enabled) {
-    offer(MongoStart())
   }
 
   if (profileConfig.autoLog == "without color" || profileConfig.autoLog == "both") {
@@ -181,7 +170,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case CloseProfile() =>
             closeQuietly(telnet.foreach(_.close()))
             closeQuietly(client.foreach(_.shutdown()))
-            closeQuietly(mongo.foreach(_.close()))
             mainWindow.tabbedPane.remove(profilePanel)
 
           case ProfileConnect() =>
@@ -217,7 +205,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
                 this.client = Some(script)
                 Try {
                   script.init(new ProfileProxy(this), clientReloadData)
-                  db.foreach(d=> script.initDB(d._1, d._2))
                 } match {
                   case Failure(e) =>
                     slog.error(s"failed to init client, won't autostart, ${e.getMessage}")
@@ -242,21 +229,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
           case ProfileLog(on, color) =>
             console.log(on, color)
 
-          case MongoStart() =>
-            mongo = Some(new Mongo(this, profileConfig))
-            db = None
-
-          case MongoStop() =>
-            closeQuietly(mongo.foreach(_.close()))
-            db = None
-            mongo = None
-
-          case MongoInit(mongoClient: MongoClient, db: MongoDatabase) =>
-            if (mongo.isDefined) {
-              this.db = Some((mongoClient, db))
-              withClient(_.initDB(mongoClient, db))
-            }
-
           case unhandledEvent =>
             log.error(s"unhandled event $unhandledEvent")
         }
@@ -277,15 +249,6 @@ class Profile(private var profileConfig: ProfileConfig, mainWindow: MainWindow) 
       slog.error(f"failed to offer event $event")
       log.error(f"failed to offer event $event")
     }
-  }
-
-  def mongoStart(): Unit = offer(MongoStart())
-
-  def mongoStop(): Unit = offer(MongoStop())
-
-  def mongoRestart(): Unit = {
-    offer(MongoStop())
-    offer(MongoStart())
   }
 
   def clientStart(): Unit = offer(ClientStart())

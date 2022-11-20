@@ -20,7 +20,6 @@ vast library.
 * MCCP
 * programmable window layout
 * IntelliJ's Darcula theme
-* first class MongoDB integration
 * perfect text processing
 * customizable telnet color
 * scroll splitter
@@ -43,7 +42,6 @@ vast library.
 ![Client UI](docs/screenshots/client-ui.png)
 ![System Log](docs/screenshots/system-log.png)
 ![Color Settings](docs/screenshots/color-settings.png)
-![Mongo Settings](docs/screenshots/mongo-settings.png)
 
 ## Credits
 

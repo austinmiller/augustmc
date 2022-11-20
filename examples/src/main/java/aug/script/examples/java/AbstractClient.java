@@ -4,8 +4,6 @@ import aug.script.framework.ClientInterface;
 import aug.script.framework.LineEvent;
 import aug.script.framework.ProfileInterface;
 import aug.script.framework.ReloadData;
-import org.mongodb.scala.MongoClient;
-import org.mongodb.scala.MongoDatabase;
 
 public class AbstractClient implements ClientInterface {
 
@@ -14,10 +12,6 @@ public class AbstractClient implements ClientInterface {
     @Override
     public void init(ProfileInterface profileInterface, ReloadData reloadData) {
         profile = profileInterface;
-    }
-
-    @Override
-    public void initDB(MongoClient mongoClient, MongoDatabase mongoDatabase) {
     }
 
     @Override

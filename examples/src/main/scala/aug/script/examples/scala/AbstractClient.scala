@@ -1,7 +1,6 @@
 package aug.script.examples.scala
 
 import aug.script.framework.{ClientInterface, LineEvent, ProfileInterface, ReloadData}
-import org.mongodb.scala.{MongoClient, MongoDatabase}
 
 abstract class AbstractClient extends ClientInterface {
   protected var profile: ProfileInterface
@@ -24,5 +23,4 @@ abstract class AbstractClient extends ClientInterface {
 
   override def onDisconnect(id: Long): Unit = {}
 
-  override def initDB(mongoClient: MongoClient, mongoDatabase: MongoDatabase): Unit = {}
 }

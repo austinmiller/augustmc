@@ -31,9 +31,9 @@ writing).  Other versions of Scala are not binary compatible.
 
 The client is loaded in a client classloader which jails off client-specific
 classes.  This is a simpler version of how J2EE webapps are loaded.  Classes
-whose packages begin with "java", "scala", "aug.script.framework", and
-"org.mongodb" are loaded in the Application classloader.  All other classes are
-loaded in the client classloader.
+whose packages begin with "java", "scala", and "aug.script.framework" are 
+loaded in the Application classloader.  All other classes are loaded in the 
+client classloader.
 
 On restart, the client gets a whole new classloader.  Thus, clients have clean
 versions of their compiled classes to reference, as well as the ability to

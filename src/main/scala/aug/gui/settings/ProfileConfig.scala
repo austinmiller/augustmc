@@ -310,13 +310,11 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
   val telnetConfigPanel = new TelnetConfigPanel(this)
   val javaConfigPanel = new JavaConfigPanel(settingsWindow, this)
   val uiConfigPanel = new UIConfigPanel(this)
-  val mongoConfigPanel = new MongoConfigPanel(this)
 
   val tabs = new JTabbedPane()
   tabs.addTab("telnet", telnetConfigPanel)
   tabs.addTab("java", javaConfigPanel)
   tabs.addTab("ui", uiConfigPanel)
-  tabs.addTab("mongo", mongoConfigPanel)
 
   tabs.setUI(new DarculaTabbedPaneUI() {
     override def paintFocusIndicator(g: Graphics, tabPlacement: Int, rects: Array[Rectangle], tabIndex: Int,
@@ -350,12 +348,6 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
     uiConfigPanel.consoleWindowConfigPanel.stackCheck.setSelected(profileConfig.consoleWindow.stackCmds)
     uiConfigPanel.consoleWindowConfigPanel.onNewLineCheck.setSelected(profileConfig.consoleWindow.cmdsOnNewLine)
     uiConfigPanel.loggingConfigPanel.autoLogCombo.setSelectedItem(profileConfig.autoLog)
-
-    mongoConfigPanel.enabledBox.setSelectionEnabled(profileConfig.mongoConfig.enabled)
-    mongoConfigPanel.userField.setText(profileConfig.mongoConfig.user)
-    mongoConfigPanel.passField.setText(profileConfig.mongoConfig.password)
-    mongoConfigPanel.dbField.setText(profileConfig.mongoConfig.db)
-    mongoConfigPanel.hostField.setText(profileConfig.mongoConfig.host)
   }
 
   def setDirty() : Unit = settingsWindow.setProfileDirty(profileConfig.name)
@@ -399,13 +391,6 @@ class ProfileConfigPanel(val settingsWindow: SettingsWindow, var profileConfig: 
         echoCommands = uiConfigPanel.consoleWindowConfigPanel.echoCheck.isSelected,
         stackCmds = uiConfigPanel.consoleWindowConfigPanel.stackCheck.isSelected,
         cmdsOnNewLine = uiConfigPanel.consoleWindowConfigPanel.onNewLineCheck.isSelected
-      ),
-      mongoConfig = MongoConfig(
-        enabled = mongoConfigPanel.enabledBox.isSelectionEnabled,
-        user = mongoConfigPanel.userField.getText,
-        password = mongoConfigPanel.passField.getPassword.mkString,
-        db = mongoConfigPanel.dbField.getText,
-        host = mongoConfigPanel.hostField.getText
       ),
       autoLog = uiConfigPanel.loggingConfigPanel.autoLogCombo.getSelectedItem.toString
     )

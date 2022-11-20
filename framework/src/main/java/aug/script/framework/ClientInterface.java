@@ -1,8 +1,5 @@
 package aug.script.framework;
 
-import org.mongodb.scala.MongoClient;
-import org.mongodb.scala.MongoDatabase;
-
 /**
  * <p>All clients must have a class with a parameterless constructor which implements this
  * interface.  When a client is started, the class is found by configuring the FQN of
@@ -85,19 +82,6 @@ public interface ClientInterface {
      * transient data across script reloads in a seamless way.</p>
      */
     void init(ProfileInterface profileInterface, ReloadData reloadData);
-
-    /**
-     * <p>Called exactly once if, and only if, mongo is correctly setup in the preferences and
-     * a connection to the database is successfully made.  It is always called after
-     * {@link #init(ProfileInterface, ReloadData)}.  It can take some time before the db is
-     * initialized, maybe even half a minute.  If the script is reloaded after the db has
-     * been initialized, expect that this call happens right after {@link #init(ProfileInterface, ReloadData)}
-     * without any pause.</p>
-     *
-     * <p>It is strongly suggested that any operations done on this object are done on a separate
-     * thread in order to prevent the client timing out.</p>
-     */
-    void initDB(MongoClient mongoClient, MongoDatabase mongoDatabase);
 
     /**
      * <p>Called exactly once when the java client is being shutdown.  The return value
