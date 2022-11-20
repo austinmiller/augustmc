@@ -96,8 +96,8 @@ object Util {
   val log = Logger(LoggerFactory.getLogger(Util.getClass))
 
   val name = "August MC"
-  val major = 2017
-  val minor = 4
+  val major = 2022
+  val minor = 1
 
   def fullName : String = s"$name $version"
   def version : String = s"$major.$minor"
